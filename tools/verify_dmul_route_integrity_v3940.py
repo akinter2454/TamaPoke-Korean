@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deep static integrity check for TamaPoke v3.96.0 DMUL 16-22 evolution routes."""
+"""Deep static integrity check for TamaPoke v3.96.1 DMUL 16-22 evolution routes."""
 from pathlib import Path
 import re
 
@@ -15,7 +15,7 @@ assert len(rows)==458, len(rows)
 by_nv={(r['name'],r['version']):r for r in rows}
 names={r['name'] for r in rows}
 
-assert '#define FW_VERSION "3.96.0"' in ino
+assert '#define FW_VERSION "3.96.1"' in ino
 assert 'DIGI_DEVICE_SLOT_COUNT = 18' in h
 assert 'return v>=16&&v<=22' in h
 assert 'return (v>=1&&v<=5)||(v>=10&&v<=22)' in h

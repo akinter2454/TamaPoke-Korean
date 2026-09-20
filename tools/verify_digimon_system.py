@@ -7,7 +7,7 @@ h=(r/'digimon.h').read_text(encoding='utf-8'); pet=(r/'pet.cpp').read_text(encod
 rows=re.findall(r'D\("([^"]+)",(\d+),(\d+),(\d+),(\d+)\)',cpp)
 ko_block=cpp.split('static const char *const DIGI_NAMES_KO[] = {',1)[1].split('};',1)[0]
 ko_names=re.findall(r'"([^"]+)"',ko_block)
-assert '#define FW_VERSION "3.96.0"' in ino and len(rows)==458
+assert '#define FW_VERSION "3.96.1"' in ino and len(rows)==458
 assert len(ko_names)>=90 and all(re.search(r'[가-힣]',name) for name in ko_names[:90])
 assert '#include "pendulum_species.inc"' not in cpp
 assert '#include "pendulum_names_ko.inc"' not in cpp

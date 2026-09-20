@@ -8,7 +8,7 @@ ino = (root / 'TamaPoke.ino').read_text(encoding='utf-8')
 h = (root / 'pet.h').read_text(encoding='utf-8')
 cpp = (root / 'pet.cpp').read_text(encoding='utf-8')
 
-assert '#define FW_VERSION "3.96.0"' in ino
+assert '#define FW_VERSION "3.96.1"' in ino
 expected = {
     'ENERGY_SLEEP_RECOVERY': 10,
     'ENERGY_AWAKE_DECAY_MINUTES': 6,

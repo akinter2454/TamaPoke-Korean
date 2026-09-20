@@ -25,5 +25,5 @@ for name in ('Omegamon','Mastemon','Proximamon','Mitamamon','Cernumon','Chaosdra
 assert 'pendulumFusionTarget' in cpp and 'best[material]' in cpp
 assert 'data[4]!==(id&255)' in html and 'folderVersion' in html
 assert 'dmc1~5, p0~p5 또는 DMUL' in html
-assert '#define FW_VERSION "3.96.0"' in ino
+assert '#define FW_VERSION "3.96.1"' in ino
 print('Pendulum COLOR OK: P0-P5 preserved; device picker extended safely for seven DMUL DigiTama')

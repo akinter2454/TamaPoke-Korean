@@ -50,7 +50,7 @@ checks = {
     "picker owns touch priority": on_tap.find("if (pickOpen)") < on_tap.find("if (bagOpen"),
     "visible roster tabs": all(x in SRC for x in ("pickSourceTab", '"현재·파티"', '"박스"', "PICK_TAB_Y")),
     "tab filter preserves global selection": "pickVisible(n)" in render and "squadMask" in tap,
-    "new firmware is identifiable": '#define FW_VERSION "3.96.0"' in SRC,
+    "new firmware is identifiable": '#define FW_VERSION "3.96.1"' in SRC,
 }
 
 failed = [name for name, ok in checks.items() if not ok]

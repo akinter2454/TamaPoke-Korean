@@ -51,4 +51,4 @@ for name,power in [('Coronamon',32),('Firamon',52),('Flaremon',100),('Apollomon'
 # Type index alignment.
 types=json.loads((r/'data/digimon/types.json').read_text(encoding='utf-8'))['entries']
 assert len(types)==458 and all(e['index']==i for i,e in enumerate(types))
-print('DMUL v3.96.0 routes OK: 7 DigiTama, Ver.22 active, OmegaX final evolution and special/Jogress targets present')
+print('DMUL v3.96.1 routes OK: 7 DigiTama, Ver.22 active, OmegaX final evolution and special/Jogress targets present')

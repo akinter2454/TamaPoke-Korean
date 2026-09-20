@@ -6,7 +6,7 @@ cpp=(r/'digimon.cpp').read_text(encoding='utf-8')
 h=(r/'digimon.h').read_text(encoding='utf-8')
 ino=(r/'TamaPoke.ino').read_text(encoding='utf-8')
 rows=[m.groups() for m in re.finditer(r'D\("([^"]+)",(\d+),(\d+),(\d+),(\d+)\)',cpp)]
-assert '#define FW_VERSION "3.96.0"' in ino
+assert '#define FW_VERSION "3.96.1"' in ino
 assert len(rows)==458
 assert rows[456]==('Imperialdramon Paladin Mode','22','5','225','1')
 assert rows[457]==('Imperialdramon OmegaX','22','5','255','0')
@@ -18,4 +18,4 @@ types=json.loads((r/'data/digimon/types.json').read_text(encoding='utf-8'))['ent
 assert len(types)==458 and types[457]['name']=='Imperialdramon OmegaX'
 assert types[457]['type1']=='DRAGON' and types[457]['type2']=='STEEL'
 assert '돌봄실수' not in cpp
-print('v3.96.0 Imperialdramon OmegaX OK: ID457, Paladin Lv70 + ATK/SPE 100, DRAGON/STEEL, no care gate')
+print('v3.96.1 Imperialdramon OmegaX OK: ID457, Paladin Lv70 + ATK/SPE 100, DRAGON/STEEL, no care gate')

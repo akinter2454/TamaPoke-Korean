@@ -6,7 +6,7 @@ cpp=(r/'digimon.cpp').read_text(encoding='utf-8')
 h=(r/'digimon.h').read_text(encoding='utf-8')
 pet=(r/'pet.cpp').read_text(encoding='utf-8')
 ino=(r/'TamaPoke.ino').read_text(encoding='utf-8')
-assert '#define FW_VERSION "3.96.0"' in ino
+assert '#define FW_VERSION "3.96.1"' in ino
 # Digimon routing API must not receive or inspect the care-mistake counter.
 assert 'careMistakes' not in cpp, 'digimon.cpp still depends on careMistakes'
 assert 'careMistakes' not in h, 'digimon.h still exposes careMistakes in Digimon evolution API'
@@ -22,4 +22,4 @@ for token in [
  'lv>=70&&a+s>=100',
 ]:
     assert token in cpp, token
-print('v3.96.0 no-care-mistake Digimon evolution OK')
+print('v3.96.1 no-care-mistake Digimon evolution OK')
