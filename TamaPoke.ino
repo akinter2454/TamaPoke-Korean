@@ -46,7 +46,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.97.1"
+#define FW_VERSION "3.97.2"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -7500,8 +7500,9 @@ void renderCardProgress() {
   gfx->print(evo);
 
   // On Digimon, show the actual next-route conditions right on the progress card.
-  // v3.97.1 reserves a taller/wider panel and never shrinks these important
-  // conditions below text-size 2. A single short condition can grow to size 3.
+  // v3.97.2 treats one logical condition as a readability-first block: short
+  // conditions use 4x text, while long "condition -> result" strings are
+  // wrapped around the arrow so neither half has to collapse to 2x.
   if (isDigi) {
     char ql[4][92];uint8_t qn=digiEvolutionQuickLines(digiId,ql);
     const int16_t qx=36,qy=244,qw=408,qh=104;
@@ -7509,14 +7510,56 @@ void renderCardProgress() {
     gfx->drawRoundRect(qx,qy,qw,qh,12,UI_TRACK);
     gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("다음 진화 조건",CX,249,390,2,2);
     if(qn==1){
-      gfx->setTextColor(!strncmp(ql[0],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
-      uiDrawCenteredFit(ql[0],CX,284,396,3,2);
+      const uint16_t qcol=!strncmp(ql[0],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK;
+      gfx->setTextColor(qcol);
+      if(uiTextWidth(ql[0],4)<=396){
+        uiDrawCenteredFit(ql[0],CX,286,396,4,4);
+      }else{
+        const char *arrow=strstr(ql[0],"→");
+        if(arrow){
+          char lhs[92]={0},rhs[92]={0};
+          size_t ll=(size_t)(arrow-ql[0]);
+          while(ll&&ql[0][ll-1]==' ')--ll;
+          if(ll>=sizeof(lhs))ll=sizeof(lhs)-1;
+          memcpy(lhs,ql[0],ll);lhs[ll]=0;
+          const char *after=arrow+strlen("→");while(*after==' ')++after;
+          snprintf(rhs,sizeof(rhs),"→ %s",after);
+
+          if(uiTextWidth(lhs,3)<=396){
+            uiDrawCenteredFit(lhs,CX,272,396,3,3);
+            uiDrawCenteredFit(rhs,CX,306,396,4,3);
+          }else{
+            // A few history-heavy routes (for example P4 or Armagemon) still
+            // exceed 3x before the arrow. Split once more at the + condition
+            // instead of shrinking the whole message back to 2x.
+            const char *plus=strstr(lhs," + ");
+            if(plus){
+              char l1[92]={0},l2[92]={0};
+              size_t l1n=(size_t)(plus-lhs);
+              while(l1n&&lhs[l1n-1]==' ')--l1n;
+              if(l1n>=sizeof(l1))l1n=sizeof(l1)-1;
+              memcpy(l1,lhs,l1n);l1[l1n]=0;
+              const char *p2=plus;while(*p2==' ')++p2;
+              snprintf(l2,sizeof(l2),"%s",p2);
+              uiDrawCenteredFit(l1,CX,264,396,3,3);
+              uiDrawCenteredFit(l2,CX,290,396,3,3);
+              uiDrawCenteredFit(rhs,CX,316,396,4,3);
+            }else{
+              uiDrawCenteredFit(lhs,CX,272,396,3,2);
+              uiDrawCenteredFit(rhs,CX,306,396,4,3);
+            }
+          }
+        }else{
+          uiDrawCenteredFit(ql[0],CX,286,396,3,2);
+        }
+      }
     }else{
-      int16_t qStart = qn>=4 ? 270 : (qn==3 ? 274 : 282);
-      int16_t qStep  = qn>=4 ? 20  : (qn==3 ? 24  : 28);
+      int16_t qStart = qn>=4 ? 270 : (qn==3 ? 274 : 278);
+      int16_t qStep  = qn>=4 ? 20  : (qn==3 ? 24  : 34);
+      uint8_t qPreferred = qn==2 ? 3 : 2;
       for(uint8_t qi=0;qi<qn&&qi<4;qi++){
         gfx->setTextColor(!strncmp(ql[qi],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
-        uiDrawCenteredFit(ql[qi],CX,qStart+qi*qStep,396,2,2);
+        uiDrawCenteredFit(ql[qi],CX,qStart+qi*qStep,396,qPreferred,2);
       }
     }
   }

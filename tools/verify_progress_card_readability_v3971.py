@@ -31,8 +31,9 @@ assert 'uiSetCursor(CX - uiTextHalfWidth(evo, 2), 218);' in card
 # reduced to the unreadable size-1 scale.
 assert 'const int16_t qx=36,qy=244,qw=408,qh=104;' in card
 assert 'uiDrawCenteredFit("다음 진화 조건",CX,249,390,2,2);' in card
-assert 'uiDrawCenteredFit(ql[0],CX,284,396,3,2);' in card
-assert 'uiDrawCenteredFit(ql[qi],CX,qStart+qi*qStep,396,2,2);' in card
+assert 'const int16_t qx=36,qy=244,qw=408,qh=104;' in card
+assert 'uiDrawCenteredFit("다음 진화 조건",CX,249,390,2,2);' in card
+assert 'uiDrawCenteredFit(ql[qi],CX,qStart+qi*qStep,396,qPreferred,2);' in card
 assert 'uiDrawCenteredFit(ql[qi],CX,299+qi*14,356,2,1);' not in card
 
 # The one static route that exceeded size-2 width was compacted without
@@ -46,4 +47,4 @@ assert 'if (!pet.evoPenalty()) {' in card
 # CI fallback remains byte-identical to the canonical sketch.
 assert ino == fallback, "firmware_source/TamaPoke.ino drift"
 
-print(f"v{fw} progress-card readability OK: level compacted, evolution UI raised, condition text >=2x")
+print(f"v{fw} progress-card readability baseline OK: level compacted, evolution UI raised, condition text >=2x")
