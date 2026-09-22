@@ -46,7 +46,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.96.2"
+#define FW_VERSION "3.97.0"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -7315,6 +7315,92 @@ void renderCardMedals() {
   }
 }
 
+// Compact, always-visible Digimon evolution guidance for the small round display.
+// It intentionally uses short Korean display names and at most four lines.
+static uint8_t digiTrainingSumNeed(uint16_t id){
+ if(id>=DIGI_SPECIES_COUNT)return 0;
+ static const uint8_t tr[]={0,0,4,8,12,0};
+ uint8_t st=DIGI_SPECIES[id].stage;return st<6?tr[st]:0;
+}
+static void digiJogressQuickLine(uint16_t id,char*out,size_t n){
+ if(!out||!n){return;}out[0]=0;if(id>=DIGI_SPECIES_COUNT)return;
+ const char*k=DIGI_SPECIES[id].name;
+ #define JQ(src,txt) if(!strcmp(k,src)){snprintf(out,n,"%s",txt);return;}
+ JQ("BlitzGreymon","조그 L55 + 크레스가루몬L55 → 오메가몬S")
+ JQ("CresGarurumon","조그 L55 + 블리츠그레이몬L55 → 오메가몬S")
+ JQ("BanchoLeomon","조그 L55 + 다크드라몬L55 → 카오스몬")
+ JQ("Darkdramon","조그 L55 + 반쵸레오몬L55 → 카오스몬")
+ JQ("Chimairamon","조그 L55 + 파워드라몬L55 → 밀레니엄몬")
+ JQ("Mugendramon","조그 L55 + 키메라몬L55 → 밀레니엄몬")
+ JQ("Alphamon","조그 L55 + 오류우몬L55 → 알파몬 왕룡검")
+ JQ("Ouryumon","조그 L55 + 알파몬L55 → 알파몬 왕룡검")
+ JQ("Slayerdramon","조그 L55 + 브레이크드라몬L55 → 엑자몬")
+ JQ("Breakdramon","조그 L55 + 슬레이어드라몬L55 → 엑자몬")
+ JQ("Dianamon","조그 L55 + 아폴로몬L55 → 그레이스노바몬")
+ JQ("Apollomon","조그 L55 + 디아나몬L55 → 그레이스노바몬")
+ JQ("Jesmon","조그 L60 + 간쿠몬L55 → 제스몬 GX")
+ JQ("ExVeemon","조그 L25 + 스나이몬L25 → 파일드라몬")
+ JQ("Snimon","조그 L25 + 엑스브이몬L25 → 다이노몬")
+ JQ("Aquilamon","조그 L25 + 가트몬L25 → 실피드몬")
+ JQ("Ankylomon","조그 L25 + 엔젤몬L25 → 토우몬")
+ if(!strcmp(k,"Angewomon")){snprintf(out,n,"조그 L55 + 레이디데블몬L55 → 마스테몬");return;}
+ if(!strcmp(k,"LadyDevimon")){snprintf(out,n,"조그 L55 + 엔젤우몬L55 → 마스테몬");return;}
+ if(!strcmp(k,"SaberLeomon")){snprintf(out,n,"조그 L55 + 엘도라/메탈에테몬 → 틀랄록몬");return;}
+ if(!strcmp(k,"ElDoradimon")||!strcmp(k,"MetalEtemon")){snprintf(out,n,"조그 L55 + 샤벨레오몬L55 → 틀랄록몬");return;}
+ if(!strcmp(k,"Plesiomon")){snprintf(out,n,"조그 L55 + 메탈시드라몬L55 → 이지스드라몬");return;}
+ if(!strcmp(k,"MetalSeadramon")){snprintf(out,n,"조그 L55 + 플레시오몬L55 → 이지스드라몬");return;}
+ if(!strcmp(k,"MarinAngemon")){snprintf(out,n,"조그 L55 + 호우오우몬L55 → 미타마몬");return;}
+ if(!strcmp(k,"Hououmon")){snprintf(out,n,"조그 L55 + 마린엔젤몬L55 → 미타마몬");return;}
+ if(!strcmp(k,"Vamdemon")){snprintf(out,n,"조그 L55 + 피에몬L55 → 볼토바우타몬");return;}
+ if(!strcmp(k,"Piemon")){snprintf(out,n,"조그 L55 + 묘티스몬L55 → 볼토바우타몬");return;}
+ if(!strcmp(k,"Griffomon")||!strcmp(k,"Pinochimon")||!strcmp(k,"Hydramon")){snprintf(out,n,"조그 L55 + 같은 P4 궁극체 기록 → 케르누몬");return;}
+ if(!strcmp(k,"WarGreymon")){snprintf(out,n,"조그 L55 + 메탈가루몬L55 → 오메가몬");return;}
+ if(!strcmp(k,"MetalGarurumon")){snprintf(out,n,"조그 L55 + 워그레이몬L55 → 오메가몬");return;}
+ if(!strcmp(k,"HiAndromon")){snprintf(out,n,"조그 L55 + 파워드라몬L55 → 카오스드라몬");return;}
+ if(!strcmp(k,"Siriusmon")){snprintf(out,n,"조그 L55 + 아크투루스몬L55 → 프로시마몬");return;}
+ if(!strcmp(k,"Arcturusmon")){snprintf(out,n,"조그 L55 + 시리우스몬L55 → 프로시마몬");return;}
+ snprintf(out,n,"조그 L%u + 상대 육성 기록",digimonJogressLevel(id));
+ #undef JQ
+}
+static uint8_t digiEvolutionQuickLines(uint16_t id,char lines[4][92]){
+ for(uint8_t i=0;i<4;i++)lines[i][0]=0;
+ if(id>=DIGI_SPECIES_COUNT)return 0;
+ uint8_t used=0;const char*k=DIGI_SPECIES[id].name;
+ const bool np=digimonHasNormalEvolutionPotential(id),jp=digimonHasJogressPotential(id);
+ if(!np&&!jp){snprintf(lines[used++],92,"최종 형태 · 추가 진화 없음");return used;}
+ if(np){
+   // Special normal/mode evolutions get their exact requirement instead of a generic level hint.
+   if(id==83){snprintf(lines[used++],92,"일반 L60 · 공80 방60 → 카오스드라몬");}
+   else if(!strcmp(k,"Dukemon")){snprintf(lines[used++],92,"일반 L60 · 공+속80 → 듀크몬 CM");}
+   else if(!strcmp(k,"Diablomon")){snprintf(lines[used++],92,"일반 L60 · 공80 + 쿠라몬 기록 → 아마게몬");}
+   else if(!strcmp(k,"MirageGaogamon")){snprintf(lines[used++],92,"일반 L60 · 공+속90 → 미라쥬가오가몬 BM");}
+   else if(!strcmp(k,"Beelzebumon")){snprintf(lines[used++],92,"일반 L60 · 공+속90 + 바알몬L45 기록");if(used<4)snprintf(lines[used++],92,"→ 베르제브몬 BM");}
+   else if(!strcmp(k,"Lucemon")){snprintf(lines[used++],92,"일반 L45 · 훈련합70 → 루체몬 FD");}
+   else if(!strcmp(k,"Lucemon Falldown Mode")){snprintf(lines[used++],92,"일반 L60 · 공+체90 → 루체몬 SM");}
+   else if(!strcmp(k,"Paildramon")||!strcmp(k,"Dinobeemon")){snprintf(lines[used++],92,"일반 L45 → 황제드라몬 DM");}
+   else if(!strcmp(k,"Imperialdramon Dragon Mode")){snprintf(lines[used++],92,"일반 L55 · 공+속60 → 황제드라몬 FM");}
+   else if(!strcmp(k,"Imperialdramon Fighter Mode")){snprintf(lines[used++],92,"일반 L60 + 오메가몬L55 기록 → 황제드라몬 PM");}
+   else if(!strcmp(k,"Imperialdramon Paladin Mode")){snprintf(lines[used++],92,"일반 L70 · 공+속100 → 황제드라몬 OX");}
+   else {
+     uint16_t b[4];uint8_t bc=digimonEvolutionBranches(id,b);uint8_t need=digimonEvolutionLevel(id),sum=digiTrainingSumNeed(id);
+     if(sum)snprintf(lines[used++],92,"일반 L%u · 훈련합 %u",need,sum);else snprintf(lines[used++],92,"일반 L%u",need);
+     if(bc&&used<4){
+       bool same=(b[0]==b[1]&&b[1]==b[2]&&b[2]==b[3]);
+       if(same)snprintf(lines[used++],92,"→ %s",digimonNameKoShort(b[0]));
+       else {
+         snprintf(lines[used++],92,"공→%s · 방→%s",digimonNameKoShort(b[0]),digimonNameKoShort(b[1]));
+         if(used<4)snprintf(lines[used++],92,"속→%s · 체→%s",digimonNameKoShort(b[2]),digimonNameKoShort(b[3]));
+       }
+     }
+     if(!strcmp(k,"Moonmon")&&used<4)snprintf(lines[used++],92,"균형 훈련 → 펜몬");
+     else if(!strcmp(k,"Pokomon")&&used<4)snprintf(lines[used++],92,"균형 훈련 → 파스코몬");
+     else if(!strcmp(k,"Koromon")&&DIGI_SPECIES[id].version==21&&used<4)snprintf(lines[used++],92,"특수: 공=속 우세→코로나몬 / 균형→파닥몬");
+   }
+ }
+ if(jp&&used<4){char j[92];digiJogressQuickLine(id,j,sizeof(j));snprintf(lines[used++],92,"%s",j);}
+ return used;
+}
+
 // pagina 3: progreso (nivel, evolucion, descuidos) — saca a la luz mecanicas
 // que antes eran invisibles (cuanto falta para subir/evolucionar y por que)
 void renderCardProgress() {
@@ -7408,13 +7494,26 @@ void renderCardProgress() {
   uiSetCursor(CX - uiTextHalfWidth(evo, 2), 256);
   gfx->print(evo);
 
+  // On Digimon, show the actual next-route conditions right on the progress card.
+  // Four compact lines are enough for ATK/DEF/SPE/HP branches plus one Jogress route.
+  if (isDigi) {
+    char ql[4][92];uint8_t qn=digiEvolutionQuickLines(digiId,ql);
+    gfx->fillRoundRect(42,282,382,74,12,UI_WHITE);
+    gfx->drawRoundRect(42,282,382,74,12,UI_TRACK);
+    gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("다음 진화 조건",CX,286,350,1,1);
+    for(uint8_t qi=0;qi<qn&&qi<4;qi++){
+      gfx->setTextColor(!strncmp(ql[qi],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
+      uiDrawCenteredFit(ql[qi],CX,299+qi*14,356,2,1);
+    }
+  }
+
   // Early-retirement delay, said out loud -- otherwise this creature simply
   // evolves later and the player has no way to know why. v3.61.9 keeps this
   // debt bounded so the displayed gate never runs past Lv.100.
   if (pet.evoPenalty()) {
     uiSetTextSize(1);
     gfx->setTextColor(UI_BAR_WARN);
-    uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_SLOW), 1), 286);
+    uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_SLOW), 1), isDigi ? 358 : 286);
     gfx->print(T(S_EVO_SLOW));
     uiSetTextSize(2);
   }
@@ -7426,7 +7525,7 @@ void renderCardProgress() {
   if (pet.currentIsDigimon()) {
     snprintf(ms, sizeof(ms), "돌봄 실수 %u · 진화 무관", pet.careMistakes);
     gfx->setTextColor(UI_TRACK);
-    uiDrawCenteredFit(ms, CX, 312, 360, 2, 1);
+    uiDrawCenteredFit(ms, CX, 359, 360, 1, 1);
   } else {
     snprintf(ms, sizeof(ms), T(S_MISTAKES_FMT), pet.careMistakes);
     gfx->setTextColor(pet.careMistakes > 0 ? UI_BAR_BAD : UI_INK);
@@ -8360,8 +8459,8 @@ static void digiDexNumber(uint16_t id,char*out,size_t n){
 static const char*digiDexRule(uint16_t id){
   if(id==DIGI_OMNIMON_ALTER_S)return "블리츠그레이몬 Lv.55 + 크레스가루루몬 Lv.55";
   if(id==DIGI_CHAOSMON)return "반쵸레오몬 Lv.55 + 다크드라몬 Lv.55";
-  if(id==DIGI_MILLENNIUMMON)return "키메라몬 Lv.55 + 무겐드라몬 Lv.55";
-  if(id==DIGI_CHAOSDRAMON)return "무겐드라몬 Lv.60 + 공격 80 + 방어 60";
+  if(id==DIGI_MILLENNIUMMON)return "키메라몬 Lv.55 + 파워드라몬 Lv.55";
+  if(id==DIGI_CHAOSDRAMON)return "파워드라몬 Lv.60 + 공격 80 + 방어 60";
   {
     const char*n=DIGI_SPECIES[id].name;
     if(!strcmp(n,"Alphamon Ouryuken"))return "알파몬 + 오류우몬 각 Lv.55 조그레스";
@@ -8376,12 +8475,12 @@ static const char*digiDexRule(uint16_t id){
     if(!strcmp(n,"Lucemon Satan Mode"))return "루체몬 폴다운 Lv.60 + 공격/체력 합 90";
     if(!strcmp(n,"Paildramon"))return "엑스브이몬 Lv.25 + 스나이몬 Lv.25 기록";
     if(!strcmp(n,"Dinobeemon"))return "스나이몬 Lv.25 + 엑스브이몬 Lv.25 기록";
-    if(!strcmp(n,"Silphymon"))return "아퀼라몬 Lv.25 + 테일몬 Lv.25 기록";
-    if(!strcmp(n,"Shakkoumon"))return "안킬로몬 Lv.25 + 엔젤몬 Lv.25 기록";
-    if(!strcmp(n,"Imperialdramon Dragon Mode"))return "파일드라몬/디노비몬 Lv.45 특수진화";
-    if(!strcmp(n,"Imperialdramon Fighter Mode"))return "황제드라몬 드래곤 모드 Lv.55 + 공격/스피드 합 60";
-    if(!strcmp(n,"Imperialdramon Paladin Mode"))return "황제드라몬 파이터 모드 Lv.60 + 오메가몬 Lv.55 기록";
-    if(!strcmp(n,"Imperialdramon OmegaX"))return "임페리얼드라몬 팔라딘 모드 Lv.70 + 공격/스피드 합 100";
+    if(!strcmp(n,"Silphymon"))return "아큐라몬 Lv.25 + 가트몬 Lv.25 기록";
+    if(!strcmp(n,"Shakkoumon"))return "황금아르마몬 Lv.25 + 엔젤몬 Lv.25 기록";
+    if(!strcmp(n,"Imperialdramon Dragon Mode"))return "파일드라몬/다이노몬 Lv.45 특수진화";
+    if(!strcmp(n,"Imperialdramon Fighter Mode"))return "황제드라몬 DM Lv.55 + 공격/스피드 합 60";
+    if(!strcmp(n,"Imperialdramon Paladin Mode"))return "황제드라몬 FM Lv.60 + 오메가몬 Lv.55 기록";
+    if(!strcmp(n,"Imperialdramon OmegaX"))return "황제드라몬 PM Lv.70 + 공격/스피드 합 100";
   }
   if(isDmulVersion(DIGI_SPECIES[id].version))return "DMUL: ATK/DEF/SPE/HP 우세 훈련으로 진화 분기";
   if(isPendulumFusionSpecies(id)){
@@ -8391,7 +8490,7 @@ static const char*digiDexRule(uint16_t id){
     if(!strcmp(n,"Proximamon"))return "시리우스몬 + 아크투루스몬 각 Lv.55";
     if(!strcmp(n,"Mitamamon"))return "마린엔젤몬(P2) + 호우오우몬(P4) 각 Lv.55";
     if(!strcmp(n,"Aegisdramon"))return "플레시오몬 + 메탈시드라몬 각 Lv.55";
-    if(!strcmp(n,"Chaosdramon"))return "무겐드라몬 + 하이안드로몬 각 Lv.55";
+    if(!strcmp(n,"Chaosdramon"))return "파워드라몬 + 하이안드로몬 각 Lv.55";
     if(!strcmp(n,"Voltobautamon"))return "묘티스몬 + 피에몬 각 Lv.55";
     if(!strcmp(n,"Cernumon"))return "그리포몬/피노키몬/히드라몬 중 2종 Lv.55";
     if(!strcmp(n,"Tlalocmon"))return "샤벨레오몬 + 엘도라디몬/메탈에테몬 Lv.55";
@@ -8496,7 +8595,7 @@ void renderDigi(){
     gfx->fillRoundRect(118,390,230,44,12,UI_BAR_OK);gfx->drawRoundRect(118,390,230,44,12,UI_INK);uiDrawCenteredFit("디지몬 도감",CX,402,218,2,1);
   }
   else{
-    char title[64];snprintf(title,sizeof(title),"%s  Lv.%u",digimonNameKo(digiPet.speciesId),digiPet.level());gfx->setTextColor(typeColor(digiPet.type1()));uiDrawCenteredFit(title,CX,110,420,2,1);drawDigiSprite();
+    char title[64];snprintf(title,sizeof(title),"%s  Lv.%u",digimonNameKoShort(digiPet.speciesId),digiPet.level());gfx->setTextColor(typeColor(digiPet.type1()));uiDrawCenteredFit(title,CX,110,420,2,1);drawDigiSprite();
     char sub[48];snprintf(sub,sizeof(sub),"%s  %s/%s",digiStageName(digiPet.species().stage),typeName(digiPet.type1()),digiPet.type2()==T_NONE?"-":typeName(digiPet.type2()));gfx->setTextColor(UI_INK);uiDrawCenteredFit(sub,CX,264,430,1,1);
     static const char*const lab[]={"공격","방어","스피드","체력"};
     for(int i=0;i<4;i++){int x=38+i*99;gfx->fillRoundRect(x,292,92,62,10,UI_WHITE);gfx->drawRoundRect(x,292,92,62,10,typeColor(digiPet.type1()));char s[24];snprintf(s,sizeof(s),"%s %u",lab[i],digiPet.stat((DigiTrain)i));uiDrawCenteredFit(s,x+46,302,86,1,1);snprintf(s,sizeof(s),"훈련 %u",digiPet.training[i]);uiDrawCenteredFit(s,x+46,326,86,1,1);}
@@ -8538,7 +8637,7 @@ void renderDigiDex(){
   if(digiDexDetail>=0&&digiDexDetail<DIGI_SPECIES_COUNT){
     uint16_t id=(uint16_t)digiDexDetail;char no[16];digiDexNumber(id,no,sizeof(no));bool seen=pet.isDigiRegistered(id);
     gfx->fillRoundRect(36,72,394,318,18,UI_WHITE);gfx->drawRoundRect(36,72,394,318,18,UI_INK);
-    uiDrawCenteredFit(no,CX,92,350,2,1);uiDrawCenteredFit((seen||isDigiExtraSpecies(id))?digimonNameKo(id):"???",CX,132,350,3,2);
+    uiDrawCenteredFit(no,CX,92,350,2,1);uiDrawCenteredFit((seen||isDigiExtraSpecies(id))?digimonNameKoShort(id):"???",CX,132,350,3,2);
     uiDrawCenteredFit(isDigiFusionSpecies(id)?"융합체":(id==DIGI_CHAOSDRAMON?"상위 진화체":digiStageName(DIGI_SPECIES[id].stage)),CX,180,350,2,1);
     gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("진화 조건",CX,228,330,2,1);gfx->setTextColor(UI_INK);uiDrawCenteredFit(digiDexRule(id),CX,264,350,2,1);
     if(isDigiExtraSpecies(id)){char lv[64];snprintf(lv,sizeof(lv),"현재 최고기록 %u",pet.digiBest[id]);uiDrawCenteredFit(lv,CX,324,330,1,1);}
@@ -8549,7 +8648,7 @@ void renderDigiDex(){
     uint16_t id=(uint16_t)digiDexPage*per+row;if(id>=DIGI_SPECIES_COUNT)break;int y=66+row*43;bool seen=pet.isDigiRegistered(id);
     gfx->fillRoundRect(52,y,362,36,8,seen?UI_WHITE:UI_TRACK);gfx->drawRoundRect(52,y,362,36,8,seen?typeColor(digiPet.type1()):UI_INK);
     char no[16];digiDexNumber(id,no,sizeof(no));uiDrawLeftFit(no,64,y+10,76,1,1);
-    uiDrawLeftFit((seen||isDigiExtraSpecies(id))?digimonNameKo(id):"???",145,y+8,158,2,1);uiDrawLeftFit(seen?(isDigiFusionSpecies(id)?"융합체":digiStageName(DIGI_SPECIES[id].stage)):"미등록",310,y+10,94,1,1);
+    uiDrawLeftFit((seen||isDigiExtraSpecies(id))?digimonNameKoShort(id):"???",145,y+8,158,2,1);uiDrawLeftFit(seen?(isDigiFusionSpecies(id)?"융합체":digiStageName(DIGI_SPECIES[id].stage)):"미등록",310,y+10,94,1,1);
   }
   char page[32];snprintf(page,sizeof(page),"%u/%u  좌우 넘김",digiDexPage+1,pages);uiDrawCenteredFit(page,CX,418,260,1,1);uiDrawCenteredFit("닫기",CX,443,100,2,1);gfx->flush();
 }
@@ -9481,7 +9580,7 @@ void drawChoiceDialog() {
   } else if (choiceKind == 4) {
     static char jq[72];
     uint16_t jt=pet.jogressTarget();
-    if(jt!=DIGI_NO_FUSION) snprintf(jq,sizeof(jq),"%s로 조그레스?",digimonNameKo(jt));
+    if(jt!=DIGI_NO_FUSION) snprintf(jq,sizeof(jq),"%s로 조그레스?",digimonNameKoShort(jt));
     else snprintf(jq,sizeof(jq),"조그레스 할까요?");
     q=jq; o1="조그레스"; o2="취소";
     c1=UI_BAR_OK; t1=UI_WHITE; c2=UI_TRACK; t2=UI_INK;

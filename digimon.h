@@ -52,6 +52,7 @@ static inline bool isCreatureId(int16_t id) { return (id >= 1 && id <= DEX_COUNT
 
 const char *creatureName(int16_t id);
 const char *digimonNameKo(uint16_t index);
+const char *digimonNameKoShort(uint16_t index);
 uint8_t creatureType1(int16_t id);
 uint8_t creatureType2(int16_t id);
 uint8_t creatureBaseAtk(int16_t id);

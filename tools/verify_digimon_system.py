@@ -14,8 +14,8 @@ assert len(ko_names)>=90 and all(re.search(r'[가-힣]',name) for name in ko_nam
 assert '#include "pendulum_species.inc"' not in cpp
 assert '#include "pendulum_names_ko.inc"' not in cpp
 assert len(rows)==458 and len(ko_names)==458
-assert rows[457][0]=='Imperialdramon OmegaX' and ko_names[457]=='임페리얼드라몬 오메가X'
-assert 'return digimonNameKo(digimonIndex(id));' in cpp
+assert rows[457][0]=='Imperialdramon OmegaX' and ko_names[457]=='황제드라몬 오메가X'
+assert 'return digimonNameKoShort(digimonIndex(id));' in cpp
 assert 'DIGI_SPECIES[id].name:"???"' not in ino
 assert 'DIGI_CREATURE_BASE = 2000' in h and 'isCreatureId' in h and 'DIGI_DEVICE_SLOT_COUNT = 18' in h and 'isDmulVersion' in h
 assert 'setDigimonVersion' in pet and 'eggSource' in pet and 'eggIsDigimon() ? false' in pet
