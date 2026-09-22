@@ -25,13 +25,13 @@ checks={
  'same halo rays sparks':'int halo=36+(int)(t*150)' in ino and 'for(int i=0;i<12;i++)' in ino and 'for(int i=0;i<10;i++)' in ino,
  'DGI ground alignment':'x=centerX-drawW/2,y=groundY-drawH;' in ino,
  'no PMD load for Digimon':'if (wasDigimon)' in ino and 'else evoPmd.load(old, pet.shiny);' in ino,
- 'affection idle animation':'drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false);' in ino,
+ 'affection idle animation':'drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false)' in ino and 'drawDigiMissingGlyph(CX,220,2,false);' in ino,
  'Digimon ceremony routing':'if(pet.currentIsDigimon()){drawDigiCeremony();return;}' in ino,
  'farewell pose and walk':'drawDigiCeremony' in ino and 'frame=digiMotionFrame(DIGI_MOTION_POSE,now);' in ino and 'frame=digiMotionFrame(DIGI_MOTION_WALK,now);' in ino and 'flip=true;' in ino,
  'decline gate resets':'evoDeclinedLv = 0;' in pet and 'evoDeclinedLv=0; registerSpecies(speciesId);' in pet,
  'care-independent Digimon evolution gate':'digimonEvolutionTarget(i,level(),trAtk,trDef,trSpe,trHp,digiBest)!=i;' in pet,
- 'card agrees':'pet.currentIsDigimon() ? pet.canEvolveNow() : pet.lowestStat() >= 40' in ino,
- 'fusion levels':'i==14||i==32||i==51||i==66||i==48||i==83)return 55' in (r/'digimon.cpp').read_text(encoding='utf-8'),
+ 'card agrees':'digimonHasNormalEvolutionPotential(digiId)' in ino and 'digimonHasJogressPotential(digiId)' in ino and 'pet.canJogressNow()' in ino,
+ 'fusion levels':'if(i==83)return 60;' in (r/'digimon.cpp').read_text(encoding='utf-8') and 'if(i==14||i==32||i==51||i==66||i==48)return 55;' in (r/'digimon.cpp').read_text(encoding='utf-8'),
 }
 bad=[k for k,v in checks.items() if not v]
 if bad: raise SystemExit('Digimon animation/evolution FAIL: '+', '.join(bad))

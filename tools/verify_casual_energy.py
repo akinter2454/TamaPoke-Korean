@@ -2,13 +2,14 @@
 """Regression guard for the global casual energy balance."""
 from pathlib import Path
 import re
+from tamapoke_version import require_semver
 
 root = Path(__file__).resolve().parents[1]
 ino = (root / 'TamaPoke.ino').read_text(encoding='utf-8')
 h = (root / 'pet.h').read_text(encoding='utf-8')
 cpp = (root / 'pet.cpp').read_text(encoding='utf-8')
 
-assert '#define FW_VERSION "3.96.1"' in ino
+FW_VERSION = require_semver(root)
 expected = {
     'ENERGY_SLEEP_RECOVERY': 10,
     'ENERGY_AWAKE_DECAY_MINUTES': 6,

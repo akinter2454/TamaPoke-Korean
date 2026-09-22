@@ -1,7 +1,8 @@
 from pathlib import Path
+from tamapoke_version import require_semver
 root=Path(__file__).resolve().parents[1]
 s=(root/'TamaPoke.ino').read_text(encoding='utf-8')
-assert '#define FW_VERSION "3.96.1"' in s
+FW_VERSION = require_semver(root)
 assert '현재 찾기: N.%03d %s  %u/6' in s
 assert '찾는 포켓몬: %s  %u/6' in s
 assert '찾는 포켓몬: N.%03d  %u/6' in s

@@ -444,7 +444,7 @@ public:
   // deliberately MENU-ONLY in the Korean build: never auto-offer/re-offer it.
   bool wantEvolveButton() const { return canEvolveNow() && level() > evoDeclinedLv; }
   bool wantFarewellButton() const { return false; }
-  void declineEvolve() { evoDeclinedLv = level(); }              // re-ofrece al subir de nivel
+  void declineEvolve();  // persist immediately; re-offer only after the next level
   void declineFarewell() {}                                      // legacy no-op; no periodic farewell prompt
   // primera partida: el jugador elige inicial (Bulbasaur/Charmander/Squirtle)
   bool awaitingStarter() const { return starterPick; }

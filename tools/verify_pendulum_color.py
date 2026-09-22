@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+from tamapoke_version import require_semver
 
 root=Path(__file__).resolve().parents[1]
 cpp=(root/'digimon.cpp').read_text()
@@ -24,6 +25,6 @@ for name in ('Omegamon','Mastemon','Proximamon','Mitamamon','Cernumon','Chaosdra
     assert name in cpp
 assert 'pendulumFusionTarget' in cpp and 'best[material]' in cpp
 assert 'data[4]!==(id&255)' in html and 'folderVersion' in html
-assert 'dmc1~5, p0~p5 또는 DMUL' in html
-assert '#define FW_VERSION "3.96.1"' in ino
+assert 'dmc1~5, p0~p5, DMUL' in html
+FW_VERSION = require_semver(root)
 print('Pendulum COLOR OK: P0-P5 preserved; device picker extended safely for seven DMUL DigiTama')

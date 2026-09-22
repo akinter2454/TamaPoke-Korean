@@ -2,6 +2,7 @@
 """Regression checks for gym and type-boss roster selection."""
 
 from pathlib import Path
+from tamapoke_version import require_semver
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,7 +51,7 @@ checks = {
     "picker owns touch priority": on_tap.find("if (pickOpen)") < on_tap.find("if (bagOpen"),
     "visible roster tabs": all(x in SRC for x in ("pickSourceTab", '"현재·파티"', '"박스"', "PICK_TAB_Y")),
     "tab filter preserves global selection": "pickVisible(n)" in render and "squadMask" in tap,
-    "new firmware is identifiable": '#define FW_VERSION "3.96.1"' in SRC,
+    "new firmware is identifiable": bool(require_semver(ROOT)),
 }
 
 failed = [name for name, ok in checks.items() if not ok]

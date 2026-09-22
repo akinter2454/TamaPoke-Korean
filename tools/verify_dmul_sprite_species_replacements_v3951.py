@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import json,re,csv
+from tamapoke_version import require_semver
 ROOT=Path(__file__).resolve().parents[1]
 cpp=(ROOT/'digimon.cpp').read_text(encoding='utf-8')
 ino=(ROOT/'TamaPoke.ino').read_text(encoding='utf-8')
 rows=[m.groups() for m in re.finditer(r'D\("([^"]+)",(\d+),(\d+),(\d+),(\d+)\)',cpp)]
-assert '#define FW_VERSION "3.96.1"' in ino
+FW_VERSION = require_semver(ROOT, "3.95.1")
 assert len(rows)==458
 assert rows[360][0]=='Lilithmon' and rows[360][1:3]==('17','5')
 assert rows[393][0]=='Gazimon' and rows[393][1:3]==('20','2')
@@ -37,4 +38,4 @@ for tool in [ROOT/'tools/TamaPoke-DMUL-Expanded-Sprite-Downloader-v3.95.1-r13.ht
     text=tool.read_text(encoding='utf-8')
     for name in ['Lilithmon','Gazimon','Patamon']: assert name in text
     for name in ['Belphemon: Sleep Mode','Shamamon','Luxmon']: assert name not in text
-print('v3.96.1 DMUL sprite species replacements OK: ID360 Lilithmon, ID393 Gazimon, ID410 Patamon; IDs/count preserved')
+print(f'v{FW_VERSION} DMUL sprite species replacements OK: ID360 Lilithmon, ID393 Gazimon, ID410 Patamon; IDs/count preserved')

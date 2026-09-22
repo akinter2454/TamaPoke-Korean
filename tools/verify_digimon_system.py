@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 import re
 from pathlib import Path
+from tamapoke_version import require_semver
 r=Path(__file__).resolve().parents[1]
 ino=(r/'TamaPoke.ino').read_text(encoding='utf-8'); cpp=(r/'digimon.cpp').read_text(encoding='utf-8')
 h=(r/'digimon.h').read_text(encoding='utf-8'); pet=(r/'pet.cpp').read_text(encoding='utf-8'); party=(r/'party.cpp').read_text(encoding='utf-8')
 rows=re.findall(r'D\("([^"]+)",(\d+),(\d+),(\d+),(\d+)\)',cpp)
 ko_block=cpp.split('static const char *const DIGI_NAMES_KO[] = {',1)[1].split('};',1)[0]
 ko_names=re.findall(r'"([^"]+)"',ko_block)
-assert '#define FW_VERSION "3.96.1"' in ino and len(rows)==458
+FW_VERSION = require_semver(r)
+assert len(rows)==458
 assert len(ko_names)>=90 and all(re.search(r'[가-힣]',name) for name in ko_names[:90])
 assert '#include "pendulum_species.inc"' not in cpp
 assert '#include "pendulum_names_ko.inc"' not in cpp

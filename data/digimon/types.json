@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "policy": "explicit_per_species; v3.96.1 keeps all IDs 0-457 stable, replaces sprite-unavailable DMUL roster entries at IDs 360/393/410, and preserves DMUL 16-22 routes/special evolutions",
+  "policy": "explicit_per_species; v3.96.2 keeps all IDs 0-457 stable, replaces sprite-unavailable DMUL roster entries at IDs 360/393/410, and preserves DMUL 16-22 routes/special evolutions",
   "entries": [
     {
       "index": 0,

@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from pathlib import Path
 import re,json,hashlib
+from tamapoke_version import require_semver
 r=Path(__file__).resolve().parents[1]
 cpp=(r/'digimon.cpp').read_text(encoding='utf-8')
 h=(r/'digimon.h').read_text(encoding='utf-8')
@@ -18,8 +19,9 @@ assert any(n=='Chibomon' and v==22 and s==0 for n,v,s,_,_ in rows)
 assert any(n=='Imperialdramon Paladin Mode' and v==22 and s==5 for n,v,s,_,_ in rows)
 assert any(n=='Imperialdramon OmegaX' and v==22 and s==5 for n,v,s,_,_ in rows)
 assert any(n=='GraceNovamon' and v==0 and s==5 for n,v,s,_,_ in rows)
-assert 'DIGI_SPECIES_CAP = 2048' in h and '#define FW_VERSION "3.96.1"' in ino
-# v3.96.1 activates Imperial Ver.22 while preserving all catalog IDs.
+assert 'DIGI_SPECIES_CAP = 2048' in h
+FW_VERSION = require_semver(r, "3.93.0")
+# v{FW_VERSION} activates Imperial Ver.22 while preserving all catalog IDs.
 assert 'DIGI_DEVICE_SLOT_COUNT = 18' in h
 assert 'return (v>=1&&v<=5)||(v>=10&&v<=22)' in h
 # Korean names and explicit type table stay index-aligned.
@@ -28,4 +30,4 @@ kn=re.findall(r'"([^"]+)"',kb)
 assert len(kn)==458, len(kn)
 types=json.loads((r/'data/digimon/types.json').read_text(encoding='utf-8'))['entries']
 assert len(types)==458 and all(e['index']==i for i,e in enumerate(types))
-print('v3.96.1 catalog OK: legacy IDs 0..332 fixed, new IDs 333..457 appended, total=458, CAP=2048')
+print(f'v{FW_VERSION} catalog OK: legacy IDs 0..332 fixed, new IDs 333..457 appended, total=458, CAP=2048')

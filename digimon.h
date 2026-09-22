@@ -80,6 +80,12 @@ uint16_t digimonJogressTarget(uint16_t index, uint8_t level, uint8_t atkRuns,
 // family has fewer than four sensible next-stage branches.
 uint8_t digimonEvolutionBranches(uint16_t index, uint16_t out[4]);
 uint8_t digimonEvolutionLevel(uint16_t index);
+// Progress-card helpers distinguish ordinary/special evolution from optional Jogress.
+// Keeping these separate prevents final Ultimate forms from being shown as "Lv.100 to evolve"
+// and lets the UI explain a partner-history gate without pretending care stats are missing.
+bool digimonHasNormalEvolutionPotential(uint16_t index);
+bool digimonHasJogressPotential(uint16_t index);
+uint8_t digimonJogressLevel(uint16_t index);
 bool digimonHasEvolutionPotential(uint16_t index);
 bool isPendulumFusionSpecies(uint16_t index);
 const char *digimonDeviceLabel(uint8_t version);

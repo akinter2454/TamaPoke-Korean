@@ -1110,7 +1110,8 @@ static uint16_t pendulumFusionTarget(uint16_t i,uint8_t lv,const uint8_t*best){
 uint8_t digimonEvolutionLevel(uint16_t i){
   if(i>=DIGI_SPECIES_COUNT)return 100;
   const char*n=DIGI_SPECIES[i].name;
-  if(i==14||i==32||i==51||i==66||i==48||i==83)return 55;
+  if(i==83)return 60;
+  if(i==14||i==32||i==51||i==66||i==48)return 55;
   if(!strcmp(n,"Alphamon")||!strcmp(n,"Ouryumon")||!strcmp(n,"Slayerdramon")||!strcmp(n,"Breakdramon")||
      !strcmp(n,"Dianamon")||!strcmp(n,"Apollomon")||!strcmp(n,"Imperialdramon Dragon Mode"))return 55;
   if(!strcmp(n,"Dukemon")||!strcmp(n,"Diablomon")||!strcmp(n,"MirageGaogamon")||!strcmp(n,"Beelzebumon")||
@@ -1120,21 +1121,63 @@ uint8_t digimonEvolutionLevel(uint16_t i){
   if(!strcmp(n,"Paildramon")||!strcmp(n,"Dinobeemon"))return 45;
   static const uint8_t need[]={2,5,12,25,45,100};return need[DIGI_SPECIES[i].stage];
 }
-static bool dmulUltimateSpecialSource(const char*n){
- return !strcmp(n,"Dukemon")||!strcmp(n,"Alphamon")||!strcmp(n,"Ouryumon")||
-        !strcmp(n,"Slayerdramon")||!strcmp(n,"Breakdramon")||!strcmp(n,"Diablomon")||
-        !strcmp(n,"Dianamon")||!strcmp(n,"Apollomon")||!strcmp(n,"MirageGaogamon")||
-        !strcmp(n,"Beelzebumon")||!strcmp(n,"Jesmon")||!strcmp(n,"Lucemon Falldown Mode")||
+static bool dmulUltimateNormalSource(const char*n){
+ // Ultimate-stage forms that still have a non-Jogress evolution.  Keep this
+ // deliberately narrower than the old catch-all list: Alphamon/Ouryumon,
+ // Slayerdramon/Breakdramon, Dianamon/Apollomon and Jesmon are Jogress-only
+ // sources and must not be presented as an automatic Lv.100 evolution.
+ return !strcmp(n,"Dukemon")||!strcmp(n,"Diablomon")||
+        !strcmp(n,"MirageGaogamon")||!strcmp(n,"Beelzebumon")||
+        !strcmp(n,"Lucemon Falldown Mode")||
         !strcmp(n,"Imperialdramon Dragon Mode")||!strcmp(n,"Imperialdramon Fighter Mode")||
         !strcmp(n,"Imperialdramon Paladin Mode");
 }
-bool digimonHasEvolutionPotential(uint16_t i){
-  if(i>=DIGI_SPECIES_COUNT)return false;
+static bool pendulumJogressSource(uint16_t i){
+ if(i>=DIGI_SPECIES_COUNT)return false;
+ const DigiSpecies&d=DIGI_SPECIES[i];const char*n=d.name;
+ if(d.version==10)return !strcmp(n,"WarGreymon")||!strcmp(n,"MetalGarurumon")||
+                         !strcmp(n,"Angewomon")||!strcmp(n,"Siriusmon")||!strcmp(n,"Arcturusmon");
+ if(d.version==11)return !strcmp(n,"Angewomon")||!strcmp(n,"SaberLeomon")||
+                         !strcmp(n,"ElDoradimon")||!strcmp(n,"MetalEtemon");
+ if(d.version==12)return !strcmp(n,"Plesiomon")||!strcmp(n,"MetalSeadramon")||!strcmp(n,"MarinAngemon");
+ if(d.version==13)return !strcmp(n,"LadyDevimon")||!strcmp(n,"Vamdemon")||!strcmp(n,"Piemon");
+ if(d.version==14)return !strcmp(n,"Hououmon")||!strcmp(n,"Griffomon")||
+                         !strcmp(n,"Pinochimon")||!strcmp(n,"Hydramon");
+ if(d.version==15)return !strcmp(n,"WarGreymon")||!strcmp(n,"MetalGarurumon")||
+                         !strcmp(n,"Mugendramon")||!strcmp(n,"HiAndromon");
+ return false;
+}
+bool digimonHasNormalEvolutionPotential(uint16_t i){
+ if(i>=DIGI_SPECIES_COUNT)return false;
+ const DigiSpecies&d=DIGI_SPECIES[i];
+ if(d.stage<DIGI_ULTIMATE)return true;
+ if(i==83)return true; // Mugendramon -> Chaosdramon is a normal special evolution.
+ return isDmulVersion(d.version)&&dmulUltimateNormalSource(d.name);
+}
+bool digimonHasJogressPotential(uint16_t i){
+ if(i>=DIGI_SPECIES_COUNT)return false;
+ if(i==14||i==32||i==48||i==51||i==66||i==83)return true;
+ if(pendulumJogressSource(i))return true;
+ const DigiSpecies&d=DIGI_SPECIES[i];const char*n=d.name;
+ if(d.version==16&&(!strcmp(n,"Alphamon")||!strcmp(n,"Ouryumon")||
+                    !strcmp(n,"Slayerdramon")||!strcmp(n,"Breakdramon")))return true;
+ if(!strcmp(n,"Dianamon")||!strcmp(n,"Apollomon"))return true;
+ if(d.version==21&&!strcmp(n,"Jesmon"))return true;
+ if(d.version==22&&d.stage==DIGI_ADULT&&(!strcmp(n,"ExVeemon")||!strcmp(n,"Snimon")||
+                                        !strcmp(n,"Aquilamon")||!strcmp(n,"Ankylomon")))return true;
+ return false;
+}
+uint8_t digimonJogressLevel(uint16_t i){
+ if(!digimonHasJogressPotential(i))return 0;
+ if(i<DIGI_SPECIES_COUNT){
   const DigiSpecies&d=DIGI_SPECIES[i];
-  if(d.stage<DIGI_ULTIMATE)return true;
-  if(isDmulVersion(d.version))return dmulUltimateSpecialSource(d.name);
-  if(isPendulumFusionSpecies(i))return false;
-  return i==14||i==32||i==51||i==66||i==48||i==83||(d.version>=10&&d.version<=15);
+  if(d.version==22&&d.stage==DIGI_ADULT)return 25;
+  if(d.version==21&&!strcmp(d.name,"Jesmon"))return 60;
+ }
+ return 55;
+}
+bool digimonHasEvolutionPotential(uint16_t i){
+ return digimonHasNormalEvolutionPotential(i)||digimonHasJogressPotential(i);
 }
 static uint8_t digiStageRank(uint16_t i){
  if(i>=DIGI_SPECIES_COUNT)return 0;

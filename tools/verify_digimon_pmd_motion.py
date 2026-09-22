@@ -1,9 +1,10 @@
 from pathlib import Path
 import re
+from tamapoke_version import require_semver
 root=Path(__file__).resolve().parents[1]
 s=(root/"TamaPoke.ino").read_text(encoding="utf-8")
 checks={
-"version": '#define FW_VERSION "3.96.1"',
+"version": bool(require_semver(root, "3.90.1")),
 "dgi3 retained": '"DGI3"',
 "no DGI4": '"DGI4"' not in s,
 "idle": "case DIGI_MOTION_IDLE:   return (elapsed/450u)&1u;" in s,

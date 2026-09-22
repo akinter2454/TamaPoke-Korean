@@ -2,12 +2,13 @@
 """Regression guard for species-specific Digimon evolution branches."""
 from pathlib import Path
 import re
+from tamapoke_version import require_semver
 
 root = Path(__file__).resolve().parents[1]
 cpp = (root / "digimon.cpp").read_text(encoding="utf-8")
 ino = (root / "TamaPoke.ino").read_text(encoding="utf-8")
 
-assert '#define FW_VERSION "3.96.1"' in ino
+FW_VERSION = require_semver(root)
 assert 'uint8_t digimonEvolutionBranches(uint16_t i,uint16_t out[4])' in cpp
 assert 'cur.version>=1&&cur.version<=5&&(cur.stage==DIGI_ADULT||cur.stage==DIGI_PERFECT)' in cpp
 assert 'uint8_t targetRank=cur.stage==DIGI_ADULT?(count==4?rank/2:rank/3):rank' in cpp

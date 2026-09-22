@@ -112,6 +112,8 @@ jobs:
           python3 "$GITHUB_WORKSPACE/tools/verify_no_care_mistake_evolution.py"
           python3 "$GITHUB_WORKSPACE/tools/verify_imperial_omegax_v3950.py"
           python3 "$GITHUB_WORKSPACE/tools/verify_dmul_sprite_downloader.py"
+          python3 "$GITHUB_WORKSPACE/tools/verify_digimon_sprite_tool_catalog_v3962.py"
+          python3 "$GITHUB_WORKSPACE/tools/verify_runtime_stabilization_v3962.py"
           python3 "$GITHUB_WORKSPACE/tools/verify_casual_energy.py"
           python3 "$GITHUB_WORKSPACE/tools/verify_pendulum_color.py"
           python3 "$GITHUB_WORKSPACE/tools/verify_local_includes.py"

@@ -8,7 +8,7 @@ standalone = ROOT / "tools/Digimon-Pendulum-DMUL-SD-Pack-Maker-v3.87.0.html"
 ino = (ROOT / "TamaPoke.ino").read_text(encoding="utf-8")
 
 for token in (
-    "0. VB~5. ME", "upload=s.match(/^([0-5])", "pendulumOnly", "onlyDMUL",
+    "let upload=s.match(/^([0-5])", "(?:vb|ns|ds|wg|me)", "pendulumOnly", "onlyDMUL",
     "scope=${scope}", "whamonperfect", "bakumon",
     "gatomon:'tailmon'", "omnimon:'omegamon'",
     "DGI3", "15,48,48", "id&255", "d${String(id).padStart(3,'0')}.dgi",

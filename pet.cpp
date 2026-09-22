@@ -1540,6 +1540,14 @@ void Pet::hatch() {
 // evolucion 1 nivel, y ademas tiene que estar bien cuidado en ese momento
 // (ninguna estadistica por debajo de 40). NO evoluciona sola: la dispara el
 // usuario tocando al bicho (evolve()), para que vea la transformacion.
+void Pet::declineEvolve() {
+  // This is an explicit player decision, not an autosave-only statistic.  Save
+  // it synchronously so a reset immediately after pressing "keep" cannot make
+  // the same evolution dialog reappear at the same level.
+  evoDeclinedLv = level();
+  save();
+}
+
 bool Pet::canEvolveNow() const {
   if (frozen) return false;     // frozen at the form it was banked in
   if (isEgg() || sleeping || ceremony != CER_NONE) return false;

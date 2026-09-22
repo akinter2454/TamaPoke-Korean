@@ -46,7 +46,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.96.1"
+#define FW_VERSION "3.96.2"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -1836,6 +1836,7 @@ void handleTouch() {
 void openClock();  // prototipo
 
 void onSwipeV(int dir) {
+  if (choiceKind) return;  // confirmation dialogs are modal: swipes must not page/close behind them
   if (pet.awaitingStarter()) return;  // bloqueado durante la eleccion de inicial
   if (uiCurrentScreen() == SCR_DEXPICK || uiCurrentScreen() == SCR_GYMPICK)
     return;                 // on the chooser, vertical does nothing: pick a row
@@ -2206,6 +2207,7 @@ void partyTap(int16_t x, int16_t y) {
 
 // deslizar: dir +1 = hacia la derecha
 void onSwipe(int dir) {
+  if (choiceKind) return;  // confirmation dialogs are modal: swipes must not page/close behind them
   // The region chooser pages, and it is checked before everything else because
   // it sits on TOP of the starter/gallery/gym screens -- each of which has its
   // own horizontal handler that would otherwise swallow the gesture. Paging a
@@ -4835,9 +4837,10 @@ void renderCardProfile() {
 
   // Profile/affection always shows a calm idle portrait. Digimon use frame 0
   // instead of inheriting the home-screen walk, joy, eating or discomfort state.
-  if (pet.currentIsDigimon())
-    drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false);
-  else if (pmd.loaded)
+  if (pet.currentIsDigimon()) {
+    if(!drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false))
+      drawDigiMissingGlyph(CX,220,2,false);
+  } else if (pmd.loaded)
     drawPmdAct(PMD_IDLE, CX, 206, millis(), true, false, 4);
 
   // racha con llama
@@ -5808,6 +5811,8 @@ static void btlSide(int tx, int ty, int sx, int sy, const Combatant &c, uint8_t 
       }
       return;
     }
+    drawDigiMissingGlyph(sx+48+ox,sy+96+oy,2,false);
+    return;
   }
   const uint8_t *th = thumbs.get(c.dex);
   if (!th) return;
@@ -7350,23 +7355,49 @@ void renderCardProgress() {
   gfx->setTextColor(UI_TRACK);
   uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_LABEL), 2), 230);
   gfx->print(T(S_EVO_LABEL));
-  char evoBuf[28];
+  char evoBuf[56];
   const char *evo;
   uint16_t evoCol = UI_INK;
-  bool hasEvolution=pet.currentIsDigimon()?digimonHasEvolutionPotential(digimonIndex(pet.speciesId)):dexHasEvolution(pet.speciesId);
+  const bool isDigi = pet.currentIsDigimon();
+  const uint16_t digiId = isDigi ? digimonIndex(pet.speciesId) : 0;
+  const bool normalPotential = isDigi ? digimonHasNormalEvolutionPotential(digiId) : dexHasEvolution(pet.speciesId);
+  const bool jogressPotential = isDigi ? digimonHasJogressPotential(digiId) : false;
+  const bool hasEvolution = normalPotential || jogressPotential;
   if (!hasEvolution) {
     evo = T(S_FINAL_FORM);
+  } else if (isDigi) {
+    // Digimon normal evolution and Jogress are independent player choices.
+    // Never reuse the Pokemon "all care stats >=40" message for a Digimon:
+    // DMUL uses training values and Jogress uses level + raising history.
+    const bool normalReady = pet.canEvolveNow();
+    const bool jogressReady = pet.canJogressNow();
+    if (normalReady && jogressReady) { evo = "일반 진화 / 조그레스 가능"; evoCol = UI_BAR_OK; }
+    else if (normalReady) { evo = "일반 진화 가능"; evoCol = UI_BAR_OK; }
+    else if (jogressReady) { evo = "조그레스 가능"; evoCol = UI_BAR_OK; }
+    else if (normalPotential) {
+      const uint8_t needed = digimonEvolutionLevel(digiId);
+      if (pet.level() < needed) {
+        if (jogressPotential) {
+          const uint8_t jneed = digimonJogressLevel(digiId);
+          snprintf(evoBuf, sizeof(evoBuf), "일반 Lv.%u / 조그레스 Lv.%u", needed, jneed);
+        } else snprintf(evoBuf, sizeof(evoBuf), "일반 진화 Lv.%u부터", needed);
+        evo = evoBuf;
+      } else {
+        evo = jogressPotential ? "일반/조그레스 조건 확인" : "훈련/특수 진화 조건 확인";
+        evoCol = UI_BAR_WARN;
+      }
+    } else {
+      const uint8_t needed = digimonJogressLevel(digiId);
+      if (needed && pet.level() < needed) snprintf(evoBuf, sizeof(evoBuf), "조그레스 Lv.%u + 상대 기록", needed);
+      else snprintf(evoBuf, sizeof(evoBuf), "조그레스 상대 육성 기록 필요");
+      evo = evoBuf;
+      evoCol = UI_BAR_WARN;
+    }
   } else {
-    // The SAME sum canEvolveNow() uses -- including the day owed for retiring
-    // the previous creature early. A card that left evoPenalty() out would
-    // promise an evolution that then does not happen.
-    int needed = pet.currentIsDigimon()?digimonEvolutionLevel(digimonIndex(pet.speciesId)):effectiveEvolutionLevel(pet.speciesId, pet.careMistakes, pet.evoPenalty());
-    if (pet.currentIsDigimon() && pet.canJogressNow()) {
-      if (pet.canEvolveNow()) evo = "일반 진화 / 조그레스 가능";
-      else evo = "조그레스 가능";
-      evoCol = UI_BAR_OK;
-    } else if (pet.level() >= needed) {
-      if (pet.currentIsDigimon() ? pet.canEvolveNow() : pet.lowestStat() >= 40) { evo = T(S_EVO_READY); evoCol = UI_BAR_OK; }
+    // Pokemon keeps the original care-stat/evolution-delay rules.
+    const int needed = effectiveEvolutionLevel(pet.speciesId, pet.careMistakes, pet.evoPenalty());
+    if (pet.level() >= needed) {
+      if (pet.lowestStat() >= 40) { evo = T(S_EVO_READY); evoCol = UI_BAR_OK; }
       else { evo = T(S_EVO_BLOCKED); evoCol = UI_BAR_BAD; }
     } else {
       snprintf(evoBuf, sizeof(evoBuf), T(S_EVO_IN_FMT), needed - pet.level());
@@ -7388,12 +7419,20 @@ void renderCardProgress() {
     uiSetTextSize(2);
   }
 
-  // descuidos (retrasan la evolucion)
-  char ms[24];
-  snprintf(ms, sizeof(ms), T(S_MISTAKES_FMT), pet.careMistakes);
-  gfx->setTextColor(pet.careMistakes > 0 ? UI_BAR_BAD : UI_INK);
-  uiSetCursor(CX - uiTextHalfWidth(ms, 2), 312);
-  gfx->print(ms);
+  // Care mistakes still exist as a care record, but since v3.94.2 they do
+  // NOT participate in Digimon evolution. Make that explicit instead of using
+  // the red Pokemon evolution-warning styling on a Digimon card.
+  char ms[44];
+  if (pet.currentIsDigimon()) {
+    snprintf(ms, sizeof(ms), "돌봄 실수 %u · 진화 무관", pet.careMistakes);
+    gfx->setTextColor(UI_TRACK);
+    uiDrawCenteredFit(ms, CX, 312, 360, 2, 1);
+  } else {
+    snprintf(ms, sizeof(ms), T(S_MISTAKES_FMT), pet.careMistakes);
+    gfx->setTextColor(pet.careMistakes > 0 ? UI_BAR_BAD : UI_INK);
+    uiSetCursor(CX - uiTextHalfWidth(ms, 2), 312);
+    gfx->print(ms);
+  }
 }
 
 void renderCard() {
@@ -8249,6 +8288,23 @@ static bool loadDigiSprite(uint16_t id,uint8_t wantedFrame) {
   if(f.size()!=expected||!f.seek(10+(size_t)frame*frameBytes)||f.read((uint8_t*)digiPixels,frameBytes)!=(int)frameBytes){f.close();return false;}
   f.close();digiSpriteW=w;digiSpriteH=hh;digiFrameCount=h[7];digiAnimated=dgi2||dgi3;digiTransparent=dgi3?0x0001:0x0000;digiLoaded=id;digiLoadedFrame=frame;return true;
 }
+static void drawDigiMissingGlyph(int centerX,int groundY,int scale,bool label){
+  // Shared no-sprite fallback used by profile, battle, ceremony and evolution.
+  // Missing/invalid SD art must never turn a Digimon into an invisible actor.
+  int sc=scale>0?scale:2;
+  int w=28*sc,h=30*sc,x=centerX-w/2,y=groundY-h;
+  gfx->fillRoundRect(x,y,w,h,6*sc,UI_TRACK);
+  gfx->drawRoundRect(x,y,w,h,6*sc,UI_INK);
+  gfx->fillCircle(centerX,y+9*sc,6*sc,UI_INK);
+  gfx->fillRoundRect(centerX-8*sc,y+15*sc,16*sc,10*sc,3*sc,UI_INK);
+  gfx->setTextColor(UI_WHITE);
+  uiDrawCenteredFit("?",centerX,y+7*sc,10*sc,2,1);
+  if(label){
+    gfx->setTextColor(UI_INK);
+    uiDrawCenteredFit("SD 도트 없음",centerX,groundY+4,120,1,1);
+  }
+}
+
 static bool drawDigiFrameCentered(uint16_t spriteId,uint8_t frame,int centerX,
                                   int groundY,int scale,bool flip,bool silhouette){
   if(!loadDigiSprite(spriteId,frame))return false;
@@ -8403,8 +8459,9 @@ static void drawDigiSprite() {
   uint16_t spriteId=pet.currentIsDigimon()?digimonIndex(pet.speciesId):digiPet.speciesId;
   if(!loadDigiSprite(spriteId,frame)){
     gfx->fillRoundRect(153,116,160,142,18,UI_TRACK);
+    drawDigiMissingGlyph(CX,208,2,false);
     gfx->setTextColor(UI_INK);
-    uiDrawCenteredFit("SD 도트 없음",CX,174,150,2,1);
+    uiDrawCenteredFit("SD 도트 없음",CX,228,150,1,1);
     return;
   }
 
@@ -9281,7 +9338,8 @@ static void drawDigiCeremony(){
       flip=false;
       silhouette=t>0.6f&&((now/160)%2==0);
     }
-    drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,silhouette);
+    if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,silhouette))
+      drawDigiMissingGlyph(x,PET_GROUND,2,false);
     return;
   }
   int gcy=PET_GROUND-96;
@@ -9301,7 +9359,8 @@ static void drawDigiCeremony(){
     // Walking right: mirror the left-facing source art.
     flip=true;
   }
-  drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,false);
+  if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,false))
+    drawDigiMissingGlyph(x,PET_GROUND,2,false);
   if(pet.showHeart())drawMap(SPR_HEART,32,x+50,PET_GROUND-190,2,false);
 }
 
@@ -9544,8 +9603,9 @@ static void drawDigiEvolveFX(uint32_t now) {
   int period=60+(int)(220*(1.0f-t));
   bool showOld=t<0.9f&&((now/period)%2)==0;
   bool silhouette=t<0.82f;
-  if(!drawDigiEvolutionForm(showOld?previous:current,silhouette)&&showOld)
-    drawDigiEvolutionForm(current,silhouette);
+  bool digiDrawn=drawDigiEvolutionForm(showOld?previous:current,silhouette);
+  if(!digiDrawn&&showOld)digiDrawn=drawDigiEvolutionForm(current,silhouette);
+  if(!digiDrawn)drawDigiMissingGlyph(CX,PET_GROUND,2,false);
   for(int i=0;i<10;i++){
     float a=i*(float)(PI/5)+t*4.0f;int d=(int)((now/14+i*33)%200);
     int sx=cx+(int)(cosf(a)*d),sy=cy+(int)(sinf(a)*d);
@@ -9567,9 +9627,10 @@ void drawPet() {
       }
       if ((int32_t)(digiEvolveCelebrateUntil-now)>0) {
         // Existing Evolution completion motion: Pose 1<->2 on the new form.
-        drawDigiFrameCentered(digimonIndex(pet.speciesId),
-                              digiMotionFrame(DIGI_MOTION_POSE,now),
-                              CX,PET_GROUND,0,false,false);
+        if(!drawDigiFrameCentered(digimonIndex(pet.speciesId),
+                                  digiMotionFrame(DIGI_MOTION_POSE,now),
+                                  CX,PET_GROUND,0,false,false))
+          drawDigiMissingGlyph(CX,PET_GROUND,2,false);
       } else {
         drawDigiSprite();
       }

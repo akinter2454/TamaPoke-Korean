@@ -1,5 +1,5 @@
-<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TamaPoke 디지몬 SD 팩 생성기 · DMC/Pendulum/DMUL</title>
-<style>body{font-family:system-ui,sans-serif;background:#101727;color:#eef3ff;margin:0;padding:24px}.box{max-width:760px;margin:auto;background:#19243a;padding:24px;border-radius:18px}h1{font-size:26px}button,input,select{font:inherit}input,select{display:block;width:100%;box-sizing:border-box;padding:16px;background:#fff;color:#111;border-radius:12px;margin:10px 0 16px}button{padding:14px 22px;border:0;border-radius:12px;background:#49d18b;font-weight:800;cursor:pointer}button:disabled{opacity:.45}pre{white-space:pre-wrap;background:#0c1220;padding:14px;border-radius:12px;min-height:84px;max-height:320px;overflow:auto}.note{color:#b9c8e8;line-height:1.65}</style></head><body><main class="box"><h1>디지몬 SD 팩 생성기 · DMC/Pendulum/DMUL</h1><p class="note">인터넷과 Python 없이 작동합니다. <b>0. VB~5. ME</b>, <b>p0~p5</b>, <b>DMUL</b> 또는 <b>dmc1~dmc5/캐릭터별.zip/0.png~14.png</b> 형태의 바깥 ZIP을 선택하면 같은 이름의 디지몬도 버전별로 구분해 DGI3로 변환합니다. 검정과 투명을 분리하고 생성 직후 헤더·크기·프레임·RGB565를 다시 읽어 검증합니다.</p><label for="species">개별 ZIP 변환 시 적용할 디지몬</label><select id="species"></select><input id="src" type="file" accept=".zip,application/zip"><button id="go" disabled>전체 SD 팩 만들기</button><pre id="log">바깥 ZIP 또는 캐릭터별 ZIP을 선택하세요.</pre><p class="note">완료 후 받은 ZIP의 <b>digimon</b> 폴더를 SD 카드 최상위에 복사하세요. 기존 <b>mons</b> 폴더는 포켓몬용이므로 그대로 둡니다.</p></main>
+<!doctype html><html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>TamaPoke 디지몬 SD 팩 생성기 · DMC/Pendulum/DMUL Expansion</title>
+<style>body{font-family:system-ui,sans-serif;background:#101727;color:#eef3ff;margin:0;padding:24px}.box{max-width:760px;margin:auto;background:#19243a;padding:24px;border-radius:18px}h1{font-size:26px}button,input,select{font:inherit}input,select{display:block;width:100%;box-sizing:border-box;padding:16px;background:#fff;color:#111;border-radius:12px;margin:10px 0 16px}button{padding:14px 22px;border:0;border-radius:12px;background:#49d18b;font-weight:800;cursor:pointer}button:disabled{opacity:.45}pre{white-space:pre-wrap;background:#0c1220;padding:14px;border-radius:12px;min-height:84px;max-height:320px;overflow:auto}.note{color:#b9c8e8;line-height:1.65}</style></head><body><main class="box"><h1>디지몬 SD 팩 생성기 · DMUL 16~22 / 458종 대응 <small>v3.96.2 r18</small></h1><p class="note">인터넷과 Python 없이 작동합니다. <b>확정 카탈로그 ID 0~457 (458종), DMUL/특수 ID 283~457</b>을 추가로 인식합니다. 기존 <b>캐릭터별 ZIP/0.png~14.png</b> 형식뿐 아니라 <b>DMUL Sprite Downloader Lite가 만든 DMUL/NNN_이름/리소스/*.png ZIP을 그대로</b> 넣어도 자동 인식합니다. 검정과 투명을 분리하고 생성 직후 헤더·크기·프레임·RGB565를 다시 읽어 검증합니다.</p><label for="species">개별 ZIP 변환 시 적용할 디지몬</label><select id="species"></select><input id="src" type="file" accept=".zip,application/zip"><button id="go" disabled>전체 SD 팩 만들기</button><pre id="log">바깥 ZIP, 캐릭터별 ZIP 또는 v3.96.2 DMUL Expanded Downloader ZIP을 선택하세요.</pre><p class="note">완료 후 받은 ZIP의 <b>digimon</b> 폴더를 SD 카드 최상위에 복사하세요. 기존 <b>mons</b> 폴더는 포켓몬용이므로 그대로 둡니다.</p></main>
 <script>
 let CAT=`Botamon|1|0
 Koromon|1|1
@@ -90,8 +90,7 @@ Gaioumon|5|5
 Omnimon Alter-S|0|5
 Chaosmon|0|5
 Millenniummon|0|5
-Chaosdramon|0|5`.split('\n').map(x=>{let [name,v,s]=x.split('|');return{name,v:+v,s:+s}});
-CAT=CAT.concat(`
+Chaosdramon|0|5
 Bubbmon|11|0
 Mochimon|11|1
 Angoramon|11|2
@@ -285,8 +284,6 @@ Arcturusmon|10|5
 Omegamon|10|5
 Mastemon|10|5
 Proximamon|10|5
-`.trim().split('\n').map(x=>{let [name,v,s]=x.split('|');return{name,v:+v,s:+s}}));
-CAT=CAT.concat(`
 Guilmon|16|2
 Growmon|16|3
 MegaloGrowlmon|16|4
@@ -337,9 +334,135 @@ Mokumon|20|0
 Pokomon|20|1
 Botamon|21|0
 Koromon|21|1
-`.trim().split('\n').map(x=>{let [name,v,s]=x.split('|');return{name,v:+v,s:+s}}));
-const $=x=>document.getElementById(x),log=$('log'),go=$('go'),dev=v=>v>=16&&v<=21?['DMUL Dragon','DMUL Dark','DMUL Deep','DMUL Nature','DMUL Nightmare','DMUL Secret'][v-16]:(v>=10?`P${v-10}`:(v?`DMC ${v}`:'DF/DX'));CAT.forEach((d,i)=>$('species').add(new Option(`${String(i).padStart(3,'0')} · ${d.name} · ${dev(d.v)}`,i)));$('src').onchange=()=>go.disabled=!$('src').files[0];
+Dracomon|16|2
+Coredramon Blue|16|3
+Coredramon Green|16|3
+GeoGreymon|16|3
+Wingdramon|16|4
+Groundramon|16|4
+RizeGreymon|16|4
+Slayerdramon|16|5
+Breakdramon|16|5
+Examon|16|5
+Dracmon|17|2
+Ghostmon|17|2
+Tsukaimon|17|2
+Soulmon|17|3
+IceDevimon|17|3
+Sangloupmon|17|3
+Fangmon|17|3
+Witchmon|17|3
+Boogiemon|17|3
+Matadormon|17|4
+Astamon|17|4
+NeoDevimon|17|4
+SkullBaluchimon|17|4
+Wisemon|17|4
+Cerberumon|17|4
+GranDracmon|17|5
+Barbamon|17|5
+Lilithmon|17|5
+BeelStarmon|17|5
+Murmukusmon|17|5
+Swimmon|18|2
+Kamemon|18|2
+Sangomon|18|2
+Penmon|18|2
+Dolphmon|18|3
+Tylomon|18|3
+Tobiumon|18|3
+Orcamon|18|3
+MarinChimairamon|18|4
+Gusokumon|18|4
+WaruSeadramon|18|4
+Divemon|18|4
+Regalecusmon|18|5
+Neptunemon|18|5
+Leviamon|18|5
+AncientMermaimon|18|5
+Pomumon|19|2
+Funbeemon|19|2
+Lalamon|19|2
+Parasaurmon|19|3
+Sunflowmon|19|3
+Waspmon|19|3
+Ajatarmon|19|4
+CannonBeemon|19|4
+Lilamon|19|4
+GrandisKuwagamon|19|5
+TigerVespamon|19|5
+Lotusmon|19|5
+Bancho Lilimon|19|5
+Impmon|20|2
+Gazimon|20|2
+Goblimon|20|2
+Phascomon|20|2
+Sorcermon|20|3
+BlackTailmon|20|3
+Musyamon|20|3
+Fugamon|20|3
+Baalmon|20|4
+Bastemon|20|4
+Archnemon|20|4
+SkullSatamon|20|4
+Beelzebumon|20|5
+Gulfmon|20|5
+Plutomon|20|5
+Kuzuhamon|20|5
+Kudamon|21|2
+Lucemon|21|2
+Patamon|21|2
+Morphomon|21|2
+Gladimon|21|3
+Reppamon|21|3
+Pidmon|21|3
+Darcmon|21|3
+Chirinmon|21|4
+Hippogriffomon|21|4
+Mistymon|21|4
+Seraphimon|21|5
+Ophanimon|21|5
+Duftmon|21|5
+Craniummon|21|5
+Sleipmon|21|5
+Armagemon|17|5
+GraceNovamon|0|5
+Coronamon|21|2
+Firamon|21|3
+Flaremon|21|4
+Apollomon|21|5
+MirageGaogamon Burst Mode|19|5
+Beelzebumon Blast Mode|20|5
+JESmon GX|21|5
+Lucemon Falldown Mode|21|5
+Lucemon Satan Mode|21|5
+Chibomon|22|0
+DemiVeemon|22|1
+Veemon|22|2
+Wormmon|22|2
+Hawkmon|22|2
+Armadillomon|22|2
+ExVeemon|22|3
+Snimon|22|3
+Aquilamon|22|3
+Ankylomon|22|3
+JewelBeemon|22|4
+Yatagaramon|22|4
+Meteormon|22|4
+Paildramon|22|4
+Dinobeemon|22|4
+Silphymon|22|4
+Shakkoumon|22|4
+Valkyrimon|22|5
+Ravmon|22|5
+Imperialdramon Dragon Mode|22|5
+Imperialdramon Fighter Mode|22|5
+Imperialdramon Paladin Mode|22|5
+Imperialdramon OmegaX|22|5`.trim().split('\n').map(x=>{let [name,v,s]=x.split('|');return{name,v:+v,s:+s}});
+if(CAT.length!==458||CAT[283]?.name!=='Guilmon'||CAT[456]?.name!=='Imperialdramon Paladin Mode'||CAT[457]?.name!=='Imperialdramon OmegaX'||CAT.slice(283,458).length!==175) throw Error('카탈로그 검증 실패: v3.96.2은 전체 458종, DMUL ID 283~457이어야 합니다.');
+const $=x=>document.getElementById(x),log=$('log'),go=$('go'),dev=v=>v>=16&&v<=22?['DMUL Dragon','DMUL Dark','DMUL Deep','DMUL Nature','DMUL Nightmare','DMUL Secret','DMUL Imperial'][v-16]:(v>=10?`P${v-10}`:(v?`DMC ${v}`:'DF/DX'));CAT.forEach((d,i)=>$('species').add(new Option(`${String(i).padStart(3,'0')} · ${d.name} · ${dev(d.v)}`,i)));$('src').onchange=()=>go.disabled=!$('src').files[0];
 const rawKey=s=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+
 const ALIAS={
  tyrannomon:'tyranomon',darktyrannomon:'darktyranomon',metaltyrannomon:'metaltyranomon',extyrannomon:'extyranomon',
  frigimon:'yukidarumon',skullmammothmon:'skullmammon',vegiemon:'vegimon',centarumon:'centalmon',
@@ -372,6 +495,8 @@ const ALIAS={
  raptordramon:'raptordramon',hisharyumon:'hisyaryumon',hisyaryumon:'hisyaryumon',ouryumon:'ouryumon',alphamonouryuken:'alphamonouryuken',
  baohuckmon:'baohackmon',saviorhuckmon:'saviorhackmon',jesmon:'jesmon',chrysalimon:'kurisarimon',chibimon:'gigimon',demiveemon:'gigimon',petimeramon:'pokomon',petitmeramon:'pokomon',demimeramon:'pokomon',viximon:'pokomon'
 };
+
+Object.assign(ALIAS,{"dracumon":"dracmon","coredramonblue":"coredramonblue","coredramonbl":"coredramonblue","coredramongreen":"coredramongreen","coredramongr":"coredramongreen","risegreymon":"rizegreymon","marinekimeramon":"marinchimairamon","marinechimairamon":"marinchimairamon","marinechimera":"marinchimairamon","waruseadramon":"waruseadramon","wargreymonx":"wargreymonx","beelzemon":"beelzebumon","beelzemonblastmode":"beelzebumonblastmode","beelzebumonblastmode":"beelzebumonblastmode","jesmongx":"jesmongx","lucemonfalldownmode":"lucemonfalldownmode","lucemonchaosmode":"lucemonfalldownmode","lucemonsatanmode":"lucemonsatanmode","gracenovamon":"gracenovamon","armageddemon":"armagemon","armagemon":"armagemon","grandracmon":"grandracmon","grandedracmon":"grandracmon","myotismon":"vamdemon","ladydevimon":"ladydevimon","belphemonsleepmode":"belphemonsleepmode","belphemonsleep":"belphemonsleepmode","blackgatomon":"blacktailmon","blacktailmon":"blacktailmon","qilinmon":"chirinmon","tyilinmon":"chirinmon","kentaurosmon":"sleipmon","sleipmon":"sleipmon","leopardmon":"duftmon","duftmon":"duftmon","marineangemon":"marinangemon","cannonbeemon":"cannonbeemon","fanbeemon":"funbeemon","tigerespamon":"tigervespamon","tigervespamon":"tigervespamon","ancientmermaidmon":"ancientmermaimon","ancientmermaimon":"ancientmermaimon","sorcerimon":"sorcermon","sorcermon":"sorcermon","piedmon":"piemon","vmon":"veemon","veemon":"veemon","xvmon":"exveemon","exveemon":"exveemon","dinobeemon":"dinobeemon","imperialdramon":"imperialdramondragonmode","imperialdramondragonmode":"imperialdramondragonmode","imperialdramondm":"imperialdramondragonmode","imperialdramonfightermode":"imperialdramonfightermode","imperialdramonfm":"imperialdramonfightermode","imperialdramonpaladinmode":"imperialdramonpaladinmode","imperialdramonpm":"imperialdramonpaladinmode","valkyrimon":"valkyrimon","ravemon":"ravmon","ravmon":"ravmon","chibimon":"demiveemon","demiveemon":"demiveemon","boogeymon":"boogiemon","boogiemon":"boogiemon","cerberumon":"cerberumon","cerberusmon":"cerberumon","belphemonsm":"belphemonsleepmode","funbeemon":"funbeemon","lotusmon":"lotusmon","lotosmon":"lotusmon","rotosmon":"lotusmon","bancholilimon":"bancholilimon","bancholillymon":"bancholilimon","banchoulilimon":"bancholilimon","bantyolilimon":"bancholilimon","shamamon":"shamamon","shamanmon":"shamamon","mistymon":"mistymon","mystimon":"mistymon","archnemon":"archnemon","arukenimon":"archnemon","archenmon":"archnemon","pidmon":"pidmon","piddomon":"pidmon","chirinmon":"chirinmon","hippogriffomon":"hippogriffomon","hippogryphomon":"hippogriffomon","hippogryphonmon":"hippogriffomon","craniummon":"craniummon","craniamon":"craniummon","yatagaramon":"yatagaramon","crowmon":"yatagaramon","belphemonragemode":"belphemonragemode","belphemonrm":"belphemonragemode","lilithmon":"lilithmon","phelesmon":"phelesmon","mummymon":"mummymon","bastemon":"bastemon","ceresmon":"ceresmon","queenbeemon":"queenbeemon","picodevimon":"picodevimon","demidevimon":"picodevimon","mihiramon":"mihiramon","dynasmon":"dynasmon","karatenmon":"karatenmon"});
 const key=s=>{let k=rawKey(s);return ALIAS[k]||k};
 function u16(a,o){return a[o]|a[o+1]<<8}function u32(a,o){return (a[o]|a[o+1]<<8|a[o+2]<<16|a[o+3]<<24)>>>0}
 async function inflate(data,method){if(method===0)return data;if(method!==8)throw Error('지원하지 않는 ZIP 압축 방식: '+method);if(!self.DecompressionStream)throw Error('이 브라우저는 ZIP 압축 해제를 지원하지 않습니다. 최신 Chrome 또는 Edge를 사용하세요.');let ds=new DecompressionStream('deflate-raw');return new Uint8Array(await new Response(new Blob([data]).stream().pipeThrough(ds)).arrayBuffer())}
@@ -383,21 +508,134 @@ function validateDgi(data,id,frames){let size=10+frames*48*48*2;if(data.length!=
 let crcTab;function crc32(a){if(!crcTab)crcTab=Array.from({length:256},(_,n)=>{for(let k=0;k<8;k++)n=n&1?0xedb88320^(n>>>1):n>>>1;return n>>>0});let c=0xffffffff;for(let b of a)c=crcTab[(c^b)&255]^(c>>>8);return(c^0xffffffff)>>>0}function cat(...a){let n=a.reduce((s,x)=>s+x.length,0),o=new Uint8Array(n),p=0;for(let x of a){o.set(x,p);p+=x.length}return o}function le16(v){return new Uint8Array([v&255,v>>8])}function le32(v){return new Uint8Array([v&255,v>>8,v>>16,v>>24])}
 function makeZip(files){let local=[],central=[],off=0,enc=new TextEncoder();for(let f of files){let n=enc.encode(f.name),c=crc32(f.data),h=cat(le32(0x04034b50),le16(20),le16(0),le16(0),le16(0),le16(0),le32(c),le32(f.data.length),le32(f.data.length),le16(n.length),le16(0),n,f.data);local.push(h);central.push(cat(le32(0x02014b50),le16(20),le16(20),le16(0),le16(0),le16(0),le16(0),le32(c),le32(f.data.length),le32(f.data.length),le16(n.length),le16(0),le16(0),le16(0),le16(0),le32(0),le32(off),n));off+=h.length}let cd=cat(...central),end=cat(le32(0x06054b50),le16(0),le16(0),le16(files.length),le16(files.length),le32(cd.length),le32(off),le16(0));return new Blob([...local,cd,end],{type:'application/zip'})}
 function folderVersion(path){let s=path.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();if(/\b(?:dmul|digimon unlimited)\b/.test(s))return 16;let upload=s.match(/^([0-5])\s+(?:vb|ns|ds|wg|me)\b/);if(upload)return 10+(+upload[1]);let p=s.match(/(?:pendulum|penc|pen|p)\s*(zero|[0-5])\b/);if(p)return p[1]==='zero'?10:10+(+p[1]);let d=s.match(/(?:dmc|ver|version)\s*([1-5])\b/);return d?+d[1]:null}
+
+function baseFile(n){return String(n).split('/').pop()||''}
+function pickFrame(entries,patterns){
+  for(const rx of patterns)for(const f of entries)if(rx.test(baseFile(f.name)))return f;
+  return null
+}
+function normalizeLiteFrames(entries){
+  const names=entries.map(f=>baseFile(f.name));
+  const semantic=names.some(n=>/idle|eat|sleep|happy|angry|sick|attack|training|refuse/i.test(n));
+  if(semantic){
+    const P=(...rx)=>pickFrame(entries,rx);
+    let idle1=P(/01[_-]?idle1/i,/\bidle[_-]?1\b/i,/^a_.*idle/i);
+    let idle2=P(/02[_-]?idle2/i,/\bidle[_-]?2\b/i,/^b_.*idle/i);
+    if(!idle1)idle1=idle2;if(!idle2)idle2=idle1;
+    let happy=P(/happy/i),eat1=P(/eat[_-]?1/i,/03[_-]?eat1/i),eat2=P(/eat[_-]?2/i,/04[_-]?eat2/i);
+    let train1=P(/training[_-]?1/i),train2=P(/training[_-]?2/i);
+    let attack1=P(/attack[_-]?1/i,/12[_-]?attack/i,/attack/i),attack2=P(/attack[_-]?2/i);
+    let refuse=P(/refuse/i),angry=P(/angry/i),sleep1=P(/sleep[_-]?1/i,/05[_-]?sleep1/i),sleep2=P(/sleep[_-]?2/i,/06[_-]?sleep2/i);
+    let sick=P(/^((?!lose).)*sick((?!lose).)*$/i,/10[_-]?sick/i),sickLose=P(/sick[_-]?lose/i,/11[_-]?sick[_-]?lose/i);
+    let first=idle1||idle2||entries[0],F=(x,y)=>x||y||first;
+    return {
+      frames:[
+        F(idle1),F(happy,idle2),F(eat1,happy||idle2),F(train1,attack1||angry),
+        F(idle2,idle1),F(eat2,eat1),F(refuse,angry),F(angry,refuse),
+        F(train2,attack2||happy),F(attack1,angry),F(attack2,idle2),
+        F(sleep1,idle1),F(sleep2,sleep1||idle1),F(sick,angry||refuse),F(sickLose,sick||angry)
+      ],
+      mode:'semantic-action-map',
+      repaired:!P(/01[_-]?idle1/i,/\bidle[_-]?1\b/i,/^a_.*idle/i)
+    }
+  }
+  let nums=new Map();
+  for(const f of entries){
+    let n=baseFile(f.name),m=n.match(/(?:^|[-_])(\d{1,2})(?=(?:[-_.]|$))/i)||n.match(/-(\d{1,2})\.png$/i);
+    if(m)nums.set(+m[1],f)
+  }
+  const all=(a,b)=>{for(let i=a;i<=b;i++)if(!nums.has(i))return false;return true};
+  if(all(0,14))return{frames:Array.from({length:15},(_,i)=>nums.get(i)),mode:'numeric-0-14',repaired:false};
+  if(all(1,15))return{frames:Array.from({length:15},(_,i)=>nums.get(i+1)),mode:'numeric-1-15',repaired:false};
+  if(all(2,15))return{frames:[nums.get(2),...Array.from({length:14},(_,i)=>nums.get(i+2))],mode:'numeric-2-15-first-frame-repaired',repaired:true};
+  let ordered=[...entries].sort((a,b)=>baseFile(a.name).localeCompare(baseFile(b.name),undefined,{numeric:true}));
+  if(ordered.length>=15)return{frames:ordered.slice(0,15),mode:'ordered-15',repaired:false};
+  if(ordered.length===14)return{frames:[ordered[0],...ordered],mode:'ordered-14-first-frame-repaired',repaired:true};
+  if(ordered.length===12){
+    // r11 compatibility fallback:
+    // Some Pendulum Color resources are stored as 12 sequential numeric PNGs
+    // (for example Bubbmon 240.png..251.png). Preserve all 12 source frames,
+    // then fill TamaPoke's 15-frame DGI3 slots deterministically.
+    const map=[0,1,2,3,4,5,6,7,8,9,10,11,11,10,11];
+    return{frames:map.map(i=>ordered[i]),mode:'ordered-12-expanded-to-15',repaired:true};
+  }
+  throw Error(`프레임셋 해석 실패: ${entries.length}장 (${names.slice(0,4).join(', ')})`)
+}
+function isLiteDmulZip(src){return src.some(f=>/(?:^|\/)DMUL\/\d{3}_[^/]+\/[^/]+\/.+\.png$/i.test(f.name))}
+async function batchLiteDmulPack(src){
+  let groups=new Map();
+  for(const f of src){
+    let m=f.name.match(/(?:^|\/)DMUL\/(\d{3})_([^/]+)\/([^/]+)\/(.+\.png)$/i);
+    if(!m)continue;
+    let id=+m[1],sub=m[3],k=id+'|'+sub,a=groups.get(k)||{id,sub,entries:[]};a.entries.push(f);groups.set(k,a)
+  }
+  let chosen=new Map();
+  for(const g of groups.values()){
+    let score=(/dmul/i.test(g.sub)?1000:0)+g.entries.length,old=chosen.get(g.id);
+    if(!old||score>old.score)chosen.set(g.id,{...g,score})
+  }
+  let files=[],made=[],missing=[],repaired=[],errors=[],seen=new Set();
+  for(let id=283;id<=457;id++){
+    let g=chosen.get(id);
+    if(!g){missing.push(CAT[id]?.name||String(id));continue}
+    try{
+      log.textContent=`DMUL Lite ZIP 변환 중 ${id-282}/174\n#${id} ${CAT[id].name}\n${g.sub}`;await new Promise(r=>setTimeout(r,0));
+      let norm=normalizeLiteFrames(g.entries);
+      if(norm.frames.length!==15||norm.frames.some(x=>!x))throw Error('15프레임 정규화 실패');
+      let pix=await pngAnimation(norm.frames),d=CAT[id],head=new Uint8Array([68,71,73,51,id,d.v,d.s,15,48,48]),data=validateDgi(cat(head,pix),id,15);
+      files.push({name:`digimon/d${String(id).padStart(3,'0')}.dgi`,data});made.push(d.name);seen.add(id);
+      if(norm.repaired)repaired.push(`${id} ${d.name} (${norm.mode})`)
+    }catch(e){errors.push(`${id} ${CAT[id]?.name||''}: ${e.message}`)}
+  }
+  let txt=`TamaPoke Digimon SD Pack v3.96.2 r18
+format=DGI3 RGB565-LE transparent=0x0001
+mode=DMUL Lite folder ZIP direct import
+created=${made.length}
+expected=174
+missing=${missing.length}
+repaired_first_frame=${repaired.length}
+errors=${errors.length}
+
+CREATED
+${made.join('\n')}
+
+MISSING
+${missing.join('\n')}
+
+FRAME COMPATIBILITY REPAIRED
+${repaired.join('\n')}
+
+ERRORS
+${errors.join('\n')}
+`;
+  files.push({name:'digimon/manifest.txt',data:new TextEncoder().encode(txt)});
+  let url=URL.createObjectURL(makeZip(files)),a=document.createElement('a');a.href=url;a.download='digimon-sdcard-v3.96.2-dmul175-r18.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);
+  log.textContent=`DMUL Lite ZIP 변환 완료!
+생성 ${made.length}/175종
+프레임 호환 자동 보정 ${repaired.length}종
+누락 ${missing.length}종
+오류 ${errors.length}종
+
+다운로드 ZIP의 digimon 폴더를 SD 카드 최상위에 복사하세요.`
+}
 async function batchPack(inners){let files=[],made=[],duplicates=[],unmatched=[],seen=new Set(),byName=new Map();CAT.forEach((d,i)=>{let k=key(d.name),a=byName.get(k)||[];a.push(i);byName.set(k,a)});
   for(let z=0;z<inners.length;z++){let inner=inners[z],base=inner.name.split('/').pop().replace(/\.zip$/i,'').replace(/_dmc(?:\s*\(\d+\))?$/i,'').replace(/\s*\(\d+\)$/,'');
     log.textContent=`내부 ZIP 분석 중 ${z+1}/${inners.length}\n${inner.name}`;await new Promise(r=>setTimeout(r,0));
-    let ver=folderVersion(inner.name),special=(ver===13&&/\/Bakemon_dmc\.zip$/i.test(inner.name))?'bakumon':(ver===12&&key(base)==='whamon'?'whamonperfect':key(base)),choices=byName.get(special)||[],id=choices.length===1?choices[0]:choices.find(i=>CAT[i].v===ver||(ver===16&&CAT[i].v>=16&&CAT[i].v<=21));
-    if(id===undefined){unmatched.push(inner.name+' (버전 폴더 필요: dmc1~5, p0~p5 또는 DMUL)');continue}if(seen.has(id)){duplicates.push(inner.name);continue}
+    let direct=base.match(/^(\d{3})[_ -]/),id=direct?+direct[1]:undefined,ver=folderVersion(inner.name),special=(ver===13&&/\/Bakemon_dmc\.zip$/i.test(inner.name))?'bakumon':(ver===12&&key(base)==='whamon'?'whamonperfect':key(base));
+    if(id===undefined||!CAT[id]){let choices=byName.get(special)||[];id=choices.length===1?choices[0]:choices.find(i=>CAT[i].v===ver||(ver===16&&CAT[i].v>=16&&CAT[i].v<=22))}
+    if(id===undefined||!CAT[id]){unmatched.push(inner.name+' (ID 접두사 또는 버전 폴더 필요: dmc1~5, p0~p5, DMUL)');continue}if(seen.has(id)){duplicates.push(inner.name);continue}
     let entries=await readZip(inner.data,['.png']),numeric=new Array(15);for(let f of entries){let m=f.name.match(/(?:^|\/)(\d+)\.png$/i);if(m&&+m[1]<15)numeric[+m[1]]=f}
     if(numeric.filter(Boolean).length!==15){unmatched.push(`${inner.name} (0~14 프레임 부족)`);continue}
     let d=CAT[id],pix=await pngAnimation(numeric),head=new Uint8Array([68,71,73,51,id,d.v,d.s,15,48,48]),data=validateDgi(cat(head,pix),id,15);files.push({name:`digimon/d${String(id).padStart(3,'0')}.dgi`,data});made.push(d.name);seen.add(id)
   }
-  let onlyDMUL=seen.size>0&&[...seen].every(i=>CAT[i].v>=16&&CAT[i].v<=21),pendulumOnly=seen.size>0&&!onlyDMUL&&[...seen].every(i=>CAT[i].v>=10&&CAT[i].v<=15),expected=CAT.map((_,i)=>i).filter(i=>onlyDMUL?(CAT[i].v>=16&&CAT[i].v<=21):(pendulumOnly?(CAT[i].v>=10&&CAT[i].v<=15):true)),missing=expected.filter(i=>!seen.has(i)).map(i=>CAT[i].name),scope=onlyDMUL?'dmul50':(pendulumOnly?'pendulum-p0-p5':'all-digimon'),txt=`TamaPoke Digimon SD Pack v3.87.0\nformat=DGI3 RGB565-LE transparent=0x0001\nmode=batch nested ZIP\nscope=${scope}\ncreated=${made.length}\nexpected=${expected.length}\nmissing=${missing.length}\nduplicates_skipped=${duplicates.length}\nunmatched=${unmatched.length}\n\nCREATED\n${made.join('\n')}\n\nMISSING\n${missing.join('\n')}\n\nDUPLICATES SKIPPED\n${duplicates.join('\n')}\n\nUNMATCHED\n${unmatched.join('\n')}\n`;files.push({name:'digimon/manifest.txt',data:new TextEncoder().encode(txt)});
-  let url=URL.createObjectURL(makeZip(files)),a=document.createElement('a');a.href=url;a.download='digimon-sdcard-v3.87.0-batch.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);log.textContent=`일괄 변환·검증 완료!\n범위 ${onlyDMUL?'DMUL 50종':(pendulumOnly?'펜들럼 P0~P5':'전체 디지몬')}\n생성 ${made.length}/${expected.length}종\n중복 제외 ${duplicates.length}개\n미인식 ${unmatched.length}개\n누락 ${missing.length}종\n\nZIP의 digimon 폴더를 SD카드 최상위에 복사하세요.`}
+  let onlyDMUL=seen.size>0&&[...seen].every(i=>i>=283&&i<=457),pendulumOnly=seen.size>0&&!onlyDMUL&&[...seen].every(i=>CAT[i].v>=10&&CAT[i].v<=15),expected=CAT.map((_,i)=>i).filter(i=>onlyDMUL?(i>=283&&i<=457):(pendulumOnly?(CAT[i].v>=10&&CAT[i].v<=15):true)),missing=expected.filter(i=>!seen.has(i)).map(i=>CAT[i].name),scope=onlyDMUL?'dmul175':(pendulumOnly?'pendulum-p0-p5':'all-digimon'),txt=`TamaPoke Digimon SD Pack v3.96.2 r18\nformat=DGI3 RGB565-LE transparent=0x0001\nmode=batch nested ZIP\nscope=${scope}\ncreated=${made.length}\nexpected=${expected.length}\nmissing=${missing.length}\nduplicates_skipped=${duplicates.length}\nunmatched=${unmatched.length}\n\nCREATED\n${made.join('\n')}\n\nMISSING\n${missing.join('\n')}\n\nDUPLICATES SKIPPED\n${duplicates.join('\n')}\n\nUNMATCHED\n${unmatched.join('\n')}\n`;files.push({name:'digimon/manifest.txt',data:new TextEncoder().encode(txt)});
+  let url=URL.createObjectURL(makeZip(files)),a=document.createElement('a');a.href=url;a.download='digimon-sdcard-v3.96.2-r18-batch.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);log.textContent=`일괄 변환·검증 완료!\n범위 ${onlyDMUL?'DMUL/특수 175종':(pendulumOnly?'펜들럼 P0~P5':'전체 디지몬')}\n생성 ${made.length}/${expected.length}종\n중복 제외 ${duplicates.length}개\n미인식 ${unmatched.length}개\n누락 ${missing.length}종\n\nZIP의 digimon 폴더를 SD카드 최상위에 복사하세요.`}
 go.onclick=async()=>{go.disabled=true;try{
   log.textContent='ZIP 구조를 확인하는 중...';let all=await readZip($('src').files[0],['.png','.zip']),inners=all.filter(x=>x.name.toLowerCase().endsWith('.zip'));
   if(inners.length){await batchPack(inners);return}
-  let src=all.filter(x=>x.name.toLowerCase().endsWith('.png')),numeric=new Array(15);
+  let src=all.filter(x=>x.name.toLowerCase().endsWith('.png'));
+  if(isLiteDmulZip(src)){await batchLiteDmulPack(src);return}
+  let numeric=new Array(15);
   for(let f of src){let m=f.name.match(/(?:^|\/)(\d+)\.png$/i);if(m&&+m[1]<15)numeric[+m[1]]=f}
   let files=[],made=[],missing=[],animated=numeric.filter(Boolean).length===15;
   if(animated){
@@ -408,7 +646,7 @@ go.onclick=async()=>{go.disabled=true;try{
     let map=new Map(src.filter(x=>!x.name.startsWith('Idle Frame Only/')).map(x=>[key(x.name.split('/').pop().replace(/\.png$/i,'')),x]));
     for(let id=0;id<CAT.length;id++){let d=CAT[id],hit=map.get(key(d.name));if(!hit){missing.push(d.name);continue}log.textContent=`3프레임 변환 중 ${id+1}/${CAT.length}: ${d.name}`;await new Promise(r=>setTimeout(r,0));let pix=await pngFrames(hit.data),head=new Uint8Array([68,71,73,51,id,d.v,d.s,3,48,48]),data=validateDgi(cat(head,pix),id,3);files.push({name:`digimon/d${String(id).padStart(3,'0')}.dgi`,data});made.push(d.name)}
   }
-  let txt=`TamaPoke Digimon SD Pack v3.87.0\nformat=DGI3 RGB565-LE transparent=0x0001\ncreated=${made.length}\nmissing=${missing.length}\nanimated=${animated?'DGI3 15x48x48':'DGI3 3x48x48'}\n\nCREATED\n${made.join('\n')}\n\nMISSING\n${missing.join('\n')}\n`;files.push({name:'digimon/manifest.txt',data:new TextEncoder().encode(txt)});
+  let txt=`TamaPoke Digimon SD Pack v3.96.2 r18\nformat=DGI3 RGB565-LE transparent=0x0001\ncreated=${made.length}\nmissing=${missing.length}\nanimated=${animated?'DGI3 15x48x48':'DGI3 3x48x48'}\n\nCREATED\n${made.join('\n')}\n\nMISSING\n${missing.join('\n')}\n`;files.push({name:'digimon/manifest.txt',data:new TextEncoder().encode(txt)});
   let url=URL.createObjectURL(makeZip(files)),a=document.createElement('a');a.href=url;a.download=animated?`digimon-${made[0]}-animated.zip`:'digimon-sdcard-48x48.zip';a.click();setTimeout(()=>URL.revokeObjectURL(url),30000);log.textContent=`완료! ${made.join(', ')}\n\n다운로드한 ZIP의 digimon 폴더를 SD 카드 최상위에 복사하세요.`
 }catch(e){log.textContent='오류: '+e.message}finally{go.disabled=false}}
 </script></body></html>

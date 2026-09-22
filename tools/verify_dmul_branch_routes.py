@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """Guard DMUL 16-22 branching, special evolutions/Jogress, and Imperial activation."""
 from pathlib import Path
+from tamapoke_version import require_semver
 import re,json
 r=Path(__file__).resolve().parents[1]
+FW_VERSION=require_semver(r,'3.96.0')
 cpp=(r/'digimon.cpp').read_text(encoding='utf-8')
 h=(r/'digimon.h').read_text(encoding='utf-8')
 ino=(r/'TamaPoke.ino').read_text(encoding='utf-8')
@@ -51,4 +53,4 @@ for name,power in [('Coronamon',32),('Firamon',52),('Flaremon',100),('Apollomon'
 # Type index alignment.
 types=json.loads((r/'data/digimon/types.json').read_text(encoding='utf-8'))['entries']
 assert len(types)==458 and all(e['index']==i for i,e in enumerate(types))
-print('DMUL v3.96.1 routes OK: 7 DigiTama, Ver.22 active, OmegaX final evolution and special/Jogress targets present')
+print(f'DMUL v{FW_VERSION} routes OK: 7 DigiTama, Ver.22 active, OmegaX final evolution and special/Jogress targets present')
