@@ -46,7 +46,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.97.0"
+#define FW_VERSION "3.97.1"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -7379,7 +7379,7 @@ static uint8_t digiEvolutionQuickLines(uint16_t id,char lines[4][92]){
    else if(!strcmp(k,"Lucemon Falldown Mode")){snprintf(lines[used++],92,"일반 L60 · 공+체90 → 루체몬 SM");}
    else if(!strcmp(k,"Paildramon")||!strcmp(k,"Dinobeemon")){snprintf(lines[used++],92,"일반 L45 → 황제드라몬 DM");}
    else if(!strcmp(k,"Imperialdramon Dragon Mode")){snprintf(lines[used++],92,"일반 L55 · 공+속60 → 황제드라몬 FM");}
-   else if(!strcmp(k,"Imperialdramon Fighter Mode")){snprintf(lines[used++],92,"일반 L60 + 오메가몬L55 기록 → 황제드라몬 PM");}
+   else if(!strcmp(k,"Imperialdramon Fighter Mode")){snprintf(lines[used++],92,"일반 L60 + 오메가몬L55 → 황제드라몬 PM");}
    else if(!strcmp(k,"Imperialdramon Paladin Mode")){snprintf(lines[used++],92,"일반 L70 · 공+속100 → 황제드라몬 OX");}
    else {
      uint16_t b[4];uint8_t bc=digimonEvolutionBranches(id,b);uint8_t need=digimonEvolutionLevel(id),sum=digiTrainingSumNeed(id);
@@ -7409,11 +7409,14 @@ void renderCardProgress() {
   uiSetCursor(CX - uiTextHalfWidth(T(S_PROGRESS), 3), 44);
   gfx->print(T(S_PROGRESS));
 
-  // nivel grande
+  // Keep the growth level prominent, but not so oversized that it pushes the
+  // evolution information into the lower edge of the round display. v3.97.1
+  // deliberately trades one text-size step for a much larger readable
+  // evolution-condition area.
   char lv[10];
   snprintf(lv, sizeof(lv), T(S_LVL_FMT), pet.level());
-  uiSetTextSize(5);
-  uiSetCursor(CX - uiTextHalfWidth(lv, 5), 86);
+  uiSetTextSize(4);
+  uiSetCursor(CX - uiTextHalfWidth(lv, 4), 76);
   gfx->print(lv);
 
   // Progress is shown in 1/5-awake-minute units so partial sleeping growth is
@@ -7423,7 +7426,7 @@ void renderCardProgress() {
                        ? pet.sleepLevelRemainder : 0;
   const uint8_t finePerLevel = MINUTES_PER_LEVEL * SLEEP_PROGRESS_QUANTUM;
   uint8_t fineInto = into * SLEEP_PROGRESS_QUANTUM + sleepRem;
-  int bx = 93, bw = 280, by = 158, bh = 22;
+  int bx = 93, bw = 280, by = 132, bh = 20;
   gfx->fillRoundRect(bx, by, bw, bh, 6, UI_TRACK);
   int fw = (bw - 4) * fineInto / finePerLevel;
   if (fw > 0) gfx->fillRoundRect(bx + 2, by + 2, fw, bh - 4, 5, UI_BAR_OK);
@@ -7434,12 +7437,14 @@ void renderCardProgress() {
   snprintf(nx, sizeof(nx), T(S_NEXT_LVL_FMT), remain, pet.level() + 1);
   gfx->setTextColor(UI_INK);
   uiSetTextSize(2);
-  uiSetCursor(CX - uiTextHalfWidth(nx, 2), by + 32);
+  uiSetCursor(CX - uiTextHalfWidth(nx, 2), 160);
   gfx->print(nx);
 
-  // estado de evolucion
+  // Evolution summary is moved upward so the exact route conditions below can
+  // stay at text-size 2 instead of shrinking to the barely-readable size 1.
   gfx->setTextColor(UI_TRACK);
-  uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_LABEL), 2), 230);
+  uiSetTextSize(2);
+  uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_LABEL), 2), 194);
   gfx->print(T(S_EVO_LABEL));
   char evoBuf[56];
   const char *evo;
@@ -7491,19 +7496,28 @@ void renderCardProgress() {
     }
   }
   gfx->setTextColor(evoCol);
-  uiSetCursor(CX - uiTextHalfWidth(evo, 2), 256);
+  uiSetCursor(CX - uiTextHalfWidth(evo, 2), 218);
   gfx->print(evo);
 
   // On Digimon, show the actual next-route conditions right on the progress card.
-  // Four compact lines are enough for ATK/DEF/SPE/HP branches plus one Jogress route.
+  // v3.97.1 reserves a taller/wider panel and never shrinks these important
+  // conditions below text-size 2. A single short condition can grow to size 3.
   if (isDigi) {
     char ql[4][92];uint8_t qn=digiEvolutionQuickLines(digiId,ql);
-    gfx->fillRoundRect(42,282,382,74,12,UI_WHITE);
-    gfx->drawRoundRect(42,282,382,74,12,UI_TRACK);
-    gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("다음 진화 조건",CX,286,350,1,1);
-    for(uint8_t qi=0;qi<qn&&qi<4;qi++){
-      gfx->setTextColor(!strncmp(ql[qi],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
-      uiDrawCenteredFit(ql[qi],CX,299+qi*14,356,2,1);
+    const int16_t qx=36,qy=244,qw=408,qh=104;
+    gfx->fillRoundRect(qx,qy,qw,qh,12,UI_WHITE);
+    gfx->drawRoundRect(qx,qy,qw,qh,12,UI_TRACK);
+    gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("다음 진화 조건",CX,249,390,2,2);
+    if(qn==1){
+      gfx->setTextColor(!strncmp(ql[0],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
+      uiDrawCenteredFit(ql[0],CX,284,396,3,2);
+    }else{
+      int16_t qStart = qn>=4 ? 270 : (qn==3 ? 274 : 282);
+      int16_t qStep  = qn>=4 ? 20  : (qn==3 ? 24  : 28);
+      for(uint8_t qi=0;qi<qn&&qi<4;qi++){
+        gfx->setTextColor(!strncmp(ql[qi],"조그",strlen("조그"))?UI_BAR_WARN:UI_INK);
+        uiDrawCenteredFit(ql[qi],CX,qStart+qi*qStep,396,2,2);
+      }
     }
   }
 
@@ -7513,7 +7527,7 @@ void renderCardProgress() {
   if (pet.evoPenalty()) {
     uiSetTextSize(1);
     gfx->setTextColor(UI_BAR_WARN);
-    uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_SLOW), 1), isDigi ? 358 : 286);
+    uiSetCursor(CX - uiTextHalfWidth(T(S_EVO_SLOW), 1), isDigi ? 350 : 286);
     gfx->print(T(S_EVO_SLOW));
     uiSetTextSize(2);
   }
@@ -7523,9 +7537,14 @@ void renderCardProgress() {
   // the red Pokemon evolution-warning styling on a Digimon card.
   char ms[44];
   if (pet.currentIsDigimon()) {
-    snprintf(ms, sizeof(ms), "돌봄 실수 %u · 진화 무관", pet.careMistakes);
-    gfx->setTextColor(UI_TRACK);
-    uiDrawCenteredFit(ms, CX, 359, 360, 1, 1);
+    // The lower edge is intentionally reserved for one low-priority note only.
+    // If an evolution delay exists, that warning wins; care mistakes are already
+    // evolution-neutral for Digimon and do not need to compete for the same pixels.
+    if (!pet.evoPenalty()) {
+      snprintf(ms, sizeof(ms), "돌봄 실수 %u · 진화 무관", pet.careMistakes);
+      gfx->setTextColor(UI_TRACK);
+      uiDrawCenteredFit(ms, CX, 351, 360, 1, 1);
+    }
   } else {
     snprintf(ms, sizeof(ms), T(S_MISTAKES_FMT), pet.careMistakes);
     gfx->setTextColor(pet.careMistakes > 0 ? UI_BAR_BAD : UI_INK);
