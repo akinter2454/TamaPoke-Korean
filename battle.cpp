@@ -25,8 +25,12 @@ void combatantFromPet(Combatant &c, const Pet &p) {
        p.spaStat(), p.spdStat(), p.speStat());
   for (int i = 0; i < MOVE_SLOTS; i++) c.moves[i] = p.moves[i];
   c.shiny = p.shiny;
-  const char *nm = p.nick[0] ? p.nick : creatureName(p.speciesId);
-  snprintf(c.name, sizeof(c.name), "%s", nm);
+  // Combatant::name is only 12 bytes and is also sent over the link layer.
+  // Never put a localized species name here: Korean UTF-8 names can be cut in
+  // the middle of a codepoint.  Species names are derived from c.dex when the
+  // battle UI renders; this field is reserved for an actual nickname.
+  if (p.nick[0]) snprintf(c.name, sizeof(c.name), "%s", p.nick);
+  else c.name[0] = 0;
 }
 
 void combatantFromParty(Combatant &c, const PartyMon &m) {
@@ -34,8 +38,8 @@ void combatantFromParty(Combatant &c, const PartyMon &m) {
        party.spaOf(m), party.spdOf(m), party.speOf(m));
   for (int i = 0; i < MOVE_SLOTS; i++) c.moves[i] = m.moves[i];
   c.shiny = m.shiny != 0;
-  const char *nm = m.nick[0] ? m.nick : creatureName(m.dex);
-  snprintf(c.name, sizeof(c.name), "%s", nm);
+  if (m.nick[0]) snprintf(c.name, sizeof(c.name), "%s", m.nick);
+  else c.name[0] = 0;
 }
 
 // ---------- stat stages ----------

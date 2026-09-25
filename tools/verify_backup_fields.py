@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Fail CI when a tamapoke NVS key written by firmware is missing from SAVE_FIELDS.
 
-The CRC A/B journals (bankA/bankB and c0a..c2b) are deliberately not exported:
-portable legacy mirrors party/box/care0..care2 are exported and rebuild those
+The CRC A/B journals (bankA/bankB and c0a..c4b) are deliberately not exported:
+portable legacy mirrors party/box/care0..care4 are exported and rebuild those
 journals on the next boot. tamapoke_guard is a derived recovery shadow and is
 also deliberately excluded; saveImport clears it before restoring.
 """
@@ -26,7 +26,7 @@ for name in FILES:
 written.discard('progress')
 
 # Dynamic keys are checked through their portable mirrors instead.
-required_portable = {'party', 'box', 'care0', 'care1', 'care2'}
+required_portable = {'party', 'box', 'care0', 'care1', 'care2', 'care3', 'care4'}
 missing = sorted((written | required_portable) - SAVE_KEYS)
 
 # These high-value fields used to be the silent backup gap that motivated this
@@ -50,4 +50,4 @@ if missing or missing_critical:
     sys.exit(1)
 
 print(f'BACKUP VERIFY OK: {len(SAVE_KEYS)} SAVE_FIELDS cover {len(written)} literal tamapoke writes')
-print('Portable mirrors cover party/box and all three care slots; A/B journals rebuild after import.')
+print('Portable mirrors cover party/box and all five care slots; A/B journals rebuild after import.')

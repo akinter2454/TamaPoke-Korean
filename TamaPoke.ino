@@ -46,7 +46,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.97.2"
+#define FW_VERSION "3.98.0"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -488,7 +488,7 @@ uint8_t movePickPage = 0;
 // rows do not leave room for the sprites.
 bool battleOpen = false;
 bool btlTower = false;       // battle belongs to the endless Battle Tower
-bool btlBoss = false;        // three-live-care-slot type boss
+bool btlBoss = false;        // three-member type boss battle
 bool btlRival = false;       // persistent Korean rival trainer
 uint8_t btlBossType = T_NORMAL;
 bool btlBossPhase2 = false;  // v3.25 boss enrages below half HP
@@ -925,7 +925,7 @@ int flashIdxForDex(int16_t dex) {
 #define CY 233
 #define PET_CY 202  // centro vertical del sprite
 
-// v3.20: three live raising tabs. They sit between the status line and the
+// v3.98.0: five live raising tabs. They sit between the status line and the
 // sprite; small enough not to cover the pet, large enough for the round touch UI.
 #define CARE_TAB_Y 112
 #define CARE_TAB_W 54
@@ -5123,16 +5123,12 @@ static void btlSay(const char *fmt, ...) {
   btlMsgCount++;
 }
 
-// Combatant.name remains the original short ASCII identifier (or a nickname)
-// because it is also used by the battle/link layer. Localize only the canonical
-// species case at draw/narration time; nicknames continue to display verbatim.
+// Combatant.name is nickname-only. Canonical species names are always resolved
+// from dex here, which prevents 12-byte Combatant.name from truncating Korean
+// UTF-8 names in gym, mission/adventure, tower and link battle screens.
 static const char *btlDisplayName(const Combatant &c) {
-  if (isDigimonId(c.dex)) return c.name[0]?c.name:creatureName(c.dex);
-  if (c.dex < 1 || c.dex > DEX_COUNT) return c.name;
-  char canonical[sizeof(c.name)];
-  snprintf(canonical, sizeof(canonical), "%s", DEX_TBL[c.dex].name);
-  if (c.name[0] && strcmp(c.name, canonical) != 0) return c.name;
-  return creatureName(c.dex);
+  if (c.name[0]) return c.name;
+  return isCreatureId(c.dex) ? creatureName(c.dex) : "?";
 }
 
 // Turns a TurnLog into narration. Everything here was already decided by the
@@ -5648,7 +5644,7 @@ static void btlResolve(uint8_t yourMove) {
       }
       return;
     }
-    // Three-live-care-slot boss. It has no gym badge and no tower streak;
+    // Three-member type boss. It has no gym badge and no tower streak;
     // winning grants an adventure reward and returns to the boss hub.
     if (btlBoss) {
       audioMusic(btlWon ? MUS_VICTORY : MUS_NONE);

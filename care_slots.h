@@ -3,13 +3,13 @@
 #include <Preferences.h>
 #include "pet.h"
 
-#define CARE_SLOT_COUNT 3
+#define CARE_SLOT_COUNT 5
 // v3.57.5: version 5 appends the sleeping-growth remainder. Older snapshots
 // default that tail byte to zero, so their visible level remains unchanged.
-#define CARE_SLOT_VERSION 6
+#define CARE_SLOT_VERSION 7
 
-// Three simultaneously-aging raising slots. Only one is rendered/interactive
-// at a time; the other two are parked snapshots whose elapsed time is applied
+// Five simultaneously-aging raising slots. Only one is rendered/interactive
+// at a time; the other four are parked snapshots whose elapsed time is applied
 // when the player taps their tab again.
 class CareSlots {
 public:
@@ -31,8 +31,8 @@ public:
 private:
   Preferences prefs;
   CareSnapshot _slots[CARE_SLOT_COUNT];
-  bool _valid[CARE_SLOT_COUNT] = {false, false, false};
-  bool _safeLoaded[CARE_SLOT_COUNT] = {false, false, false};
+  bool _valid[CARE_SLOT_COUNT] = {};
+  bool _safeLoaded[CARE_SLOT_COUNT] = {};
   uint8_t _active = 0;
   bool _ready = false;
 

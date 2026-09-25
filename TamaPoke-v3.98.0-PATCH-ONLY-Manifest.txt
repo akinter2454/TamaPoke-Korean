@@ -1,0 +1,25 @@
+TamaPoke v3.98.0 patch-only from v3.97.2
+
+Changed/added files:
+.github/workflows/main.yml
+BUILD_FIX_v3.98.0_KO.md
+GITHUB_WORKFLOW_COPY.txt
+PROJECT_STATE_v3.98.0.json
+README_FIRST_KO.txt
+START_HERE_NEW_ACCOUNT.txt
+TamaPoke-KO-OneClick-Installer.html
+TamaPoke-v3.98.0-HANDOFF.md
+TamaPoke-v3.98.0-Verification.txt
+TamaPoke.ino
+battle.cpp
+care_slots.cpp
+care_slots.h
+firmware_source/TamaPoke.ino
+pet.cpp
+pet.h
+save.cpp
+tools/base_pack_policy_report.txt
+tools/verify_backup_fields.py
+tools/verify_battle_name_v3980.py
+tools/verify_care_slots_v3980.py
+tools/verify_save_compatibility.py

@@ -558,7 +558,7 @@ public:
   void verifyCriticalProgress();
 
   // Snapshot/restore only the creature-specific raising state. Used by the
-  // three live care tabs; inactive slots catch up when selected again.
+  // five live care tabs; inactive slots catch up when selected again.
   void captureCareSnapshot(CareSnapshot &out, uint32_t nowEpoch) const;
   bool restoreCareSnapshot(const CareSnapshot &in, uint32_t nowEpoch);
 

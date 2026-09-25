@@ -55,8 +55,8 @@ static void loadBlob(Preferences &p, const char *key, void *dst, size_t n) {
 // only within one living creature, so each live-care slot stores an IV+shiny
 // signature and is restored only when that exact slot/signature still matches.
 #define PROGRESS_GUARD_MAGIC 0x47503436UL  // "GP46"
-#define PROGRESS_GUARD_VERSION 2
-#define PROGRESS_GUARD_SLOTS 3
+#define PROGRESS_GUARD_VERSION 3
+#define PROGRESS_GUARD_SLOTS CARE_SLOT_COUNT
 
 struct GuardTrain46 {
   uint8_t valid;
@@ -78,12 +78,32 @@ struct ProgressGuard46 {
   uint32_t crc;
 };
 
-static uint32_t guardCrc46(const ProgressGuard46 &g) {
-  const uint8_t *p = (const uint8_t *)&g;
-  const size_t n = offsetof(ProgressGuard46, crc);
+// v2 used three care slots. Keep its exact layout readable so a v3.97.x
+// recovery shadow is migrated rather than thrown away when v3.98.0 adds slots
+// 4 and 5. The primary save remains compatible either way; this preserves the
+// extra crash-recovery layer too.
+struct ProgressGuard46V2 {
+  uint32_t magic;
+  uint8_t version;
+  uint8_t reserved[3];
+  uint32_t sequence;
+  uint16_t badges;
+  uint16_t badgesHard;
+  uint16_t badgesX[GYM_REGIONS - 1];
+  uint16_t badgesHardX[GYM_REGIONS - 1];
+  GuardTrain46 train[3];
+  uint32_t crc;
+};
+
+static uint32_t guardCrcBytes46(const void *src, size_t n) {
+  const uint8_t *p = (const uint8_t *)src;
   uint32_t h = 2166136261UL;
   for (size_t i = 0; i < n; ++i) { h ^= p[i]; h *= 16777619UL; }
   return h;
+}
+
+static uint32_t guardCrc46(const ProgressGuard46 &g) {
+  return guardCrcBytes46(&g, offsetof(ProgressGuard46, crc));
 }
 
 static bool readProgressGuard46(ProgressGuard46 &g) {
@@ -91,10 +111,28 @@ static bool readProgressGuard46(ProgressGuard46 &g) {
   Preferences p;
   if (!p.begin("tamapoke_guard", true)) return false;
   size_t n = p.getBytesLength("progress");
-  bool ok = n == sizeof(g) && p.getBytes("progress", &g, sizeof(g)) == sizeof(g);
+  bool ok = false;
+  if (n == sizeof(g)) {
+    ok = p.getBytes("progress", &g, sizeof(g)) == sizeof(g) &&
+         g.magic == PROGRESS_GUARD_MAGIC && g.version == PROGRESS_GUARD_VERSION &&
+         g.crc == guardCrc46(g);
+  } else if (n == sizeof(ProgressGuard46V2)) {
+    ProgressGuard46V2 old{};
+    if (p.getBytes("progress", &old, sizeof(old)) == sizeof(old) &&
+        old.magic == PROGRESS_GUARD_MAGIC && old.version == 2 &&
+        old.crc == guardCrcBytes46(&old, offsetof(ProgressGuard46V2, crc))) {
+      g.magic = old.magic; g.version = PROGRESS_GUARD_VERSION;
+      memcpy(g.reserved, old.reserved, sizeof(g.reserved));
+      g.sequence = old.sequence; g.badges = old.badges; g.badgesHard = old.badgesHard;
+      memcpy(g.badgesX, old.badgesX, sizeof(g.badgesX));
+      memcpy(g.badgesHardX, old.badgesHardX, sizeof(g.badgesHardX));
+      memcpy(g.train, old.train, sizeof(old.train));
+      g.crc = guardCrc46(g);
+      ok = true;
+    }
+  }
   p.end();
-  if (!ok || g.magic != PROGRESS_GUARD_MAGIC || g.version != PROGRESS_GUARD_VERSION) return false;
-  return g.crc == guardCrc46(g);
+  return ok;
 }
 
 static bool writeProgressGuard46(const Pet &pet, uint8_t activeSlot) {

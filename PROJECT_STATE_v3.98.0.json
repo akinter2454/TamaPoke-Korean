@@ -1,0 +1,25 @@
+{
+  "project": "TamaPoke KO",
+  "baseline_fw_version": "3.98.0",
+  "save_version": 2,
+  "hardware": "Waveshare ESP32-S3-Touch-AMOLED-1.75",
+  "display": "466x466 CO5300 QSPI AMOLED",
+  "touch": "CST9217",
+  "digimon_species_count": 458,
+  "digimon_id_range": [0, 457],
+  "digimon_capacity": 2048,
+  "digimon_creature_base": 2000,
+  "care_slots": 5,
+  "party_slots": 6,
+  "box_slots": 18,
+  "previous_baseline": "3.97.2",
+  "latest_change": "battle Korean-name truncation fix + five simultaneous raising slots",
+  "invariants": [
+    "SAVE_VERSION stays 2",
+    "existing care0..care2 remain compatible",
+    "care3/care4 are additive portable mirrors",
+    "preserve existing Digimon IDs; append new species only",
+    "TamaPoke.ino and firmware_source/TamaPoke.ino stay byte-identical",
+    ".github/workflows/main.yml and GITHUB_WORKFLOW_COPY.txt stay byte-identical"
+  ]
+}

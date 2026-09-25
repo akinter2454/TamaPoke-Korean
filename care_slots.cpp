@@ -61,13 +61,13 @@ static bool readSafeBlob(Preferences &prefs, const char *key, CareSnapshot &out,
 }
 
 const char *CareSlots::keyFor(uint8_t slot) const {
-  static const char *const K[CARE_SLOT_COUNT] = { "care0", "care1", "care2" };
+  static const char *const K[CARE_SLOT_COUNT] = { "care0", "care1", "care2", "care3", "care4" };
   return slot < CARE_SLOT_COUNT ? K[slot] : "care0";
 }
 
 const char *CareSlots::safeKeyFor(uint8_t slot, bool b) const {
-  static const char *const A[CARE_SLOT_COUNT] = { "c0a", "c1a", "c2a" };
-  static const char *const B[CARE_SLOT_COUNT] = { "c0b", "c1b", "c2b" };
+  static const char *const A[CARE_SLOT_COUNT] = { "c0a", "c1a", "c2a", "c3a", "c4a" };
+  static const char *const B[CARE_SLOT_COUNT] = { "c0b", "c1b", "c2b", "c3b", "c4b" };
   return slot < CARE_SLOT_COUNT ? (b ? B[slot] : A[slot]) : (b ? "c0b" : "c0a");
 }
 

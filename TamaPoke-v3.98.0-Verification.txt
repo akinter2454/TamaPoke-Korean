@@ -1,0 +1,60 @@
+TamaPoke v3.98.0 Verification
+Date: 2026-09-26
+Base: TamaPoke v3.97.2
+Target hardware: Waveshare ESP32-S3-Touch-AMOLED-1.75
+
+RESULT: PASS (source/static/regression/package preparation)
+
+1) Battle name bug fix
+- Root cause: Combatant.name is 12 bytes. Korean UTF-8 canonical species names could be truncated mid-codepoint when gym/generic battle opponents were built.
+- Fix: Combatant.name is now nickname-only. If there is no nickname, the battle UI/narration resolves the canonical species name from dex at display time.
+- Shared battle engine coverage: gym, generic mission/adventure encounters, Battle Tower, boss/rival/link display paths.
+- verify_battle_name_v3980.py: PASS
+
+2) Raising slots 3 -> 5
+- CARE_SLOT_COUNT: 5
+- CARE_SLOT_VERSION: 7
+- Portable mirrors: care0, care1, care2, care3, care4
+- Crash-safe A/B keys: c0a/c0b through c4a/c4b
+- Five 54px tabs + 8px gaps span 302px and fit the round 466x466 panel at y=112.
+- Existing care0..care2 remain intact. New care3/care4 start empty/new when first selected.
+- verify_care_slots_v3980.py: PASS
+
+3) Save/recovery compatibility
+- SAVE_VERSION remains 2.
+- v1/v2 backup forward restore regression: PASS.
+- Existing v3.97.x 3-slot critical-progress guard (guard version 2) is explicitly read and migrated into the 5-slot guard (version 3).
+- Backup field verifier includes care0..care4.
+- No Digimon catalog/ID changes.
+
+4) Source consistency
+- FW_VERSION: 3.98.0
+- TamaPoke.ino == firmware_source/TamaPoke.ino: PASS byte-identical
+- .github/workflows/main.yml == GITHUB_WORKFLOW_COPY.txt: PASS byte-identical
+- Python verifier syntax (tools/*.py): PASS
+- One-click installer template marker updated to 3.98.0; embedded firmware fields remain empty by design and GitHub Actions embeds compiled binaries.
+
+5) Key regression suite
+30 key checks passed, including:
+- runtime stability
+- backup fields / save compatibility
+- battle-name regression v3.98.0
+- five-care-slot regression v3.98.0
+- gym/box and exact-three boss roster picker
+- training rewards / vitality training / casual energy
+- card evolution / Digimon system / capacity / catalog
+- Digimon moves / fusion policy / Jogress choice / fixed branches
+- DMUL route checks / no-care-mistake evolution / Imperialdramon OmegaX
+- runtime stabilization / Digimon name QoL / progress-card readability
+- firmware source fallback / SD serial protocol / local includes / reserved species
+- base pack policy / release storage policy
+
+6) Not validated in this environment
+- Real ESP32-S3 Arduino compile: NOT RUN (arduino-cli unavailable locally)
+- Physical Waveshare device runtime/soak test: NOT RUN
+- CI-generated catalog checks requiring generated pmd_catalog.json are left to GitHub Actions.
+
+Conclusion
+- The requested battle-name bug is fixed at the shared battle-name construction/display layer.
+- Five simultaneous raising slots are implemented across UI, NVS mirrors, A/B recovery, backup/export and critical-progress recovery.
+- Existing SAVE_VERSION 2 compatibility and Digimon IDs are preserved.

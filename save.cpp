@@ -48,7 +48,7 @@ const SaveField SAVE_FIELDS[] = {
   { "xmap", SK_U8 }, { "xtrs", SK_U8 }, { "xtrk", SK_U8 }, { "xtri", SK_U8 }, { "xtrc", SK_U8 },
   { "xrvw", SK_U16 }, { "xrvl", SK_U16 }, { "xrve", SK_U32 }, { "xrvm", SK_U32 },
   { "xrvk", SK_U8 }, { "xrvi", SK_U8 }, { "xrvc", SK_U8 }, { "xrvs", SK_U8 }, { "xrvq", SK_U8 }, { "xrvg", SK_U8 }, { "xrvsr", SK_U16 },
-  // v3.20: three live raising slots. The active pet is still mirrored in the
+  // v3.98.0: five live raising slots. The active pet is still mirrored in the
   // ordinary scalar keys above; these blobs preserve the other tabs.
   { "carev", SK_U8 }, { "carea", SK_U8 },
   // The transaction journal is normally absent. If EXPORT happens during a
@@ -56,6 +56,7 @@ const SaveField SAVE_FIELDS[] = {
   // deterministically after IMPORT instead of guessing which tab was current.
   { "caretx", SK_BOOL }, { "carefrom", SK_U8 }, { "careto", SK_U8 },
   { "care0", SK_BYTES }, { "care1", SK_BYTES }, { "care2", SK_BYTES },
+  { "care3", SK_BYTES }, { "care4", SK_BYTES },
   // the banked creatures
   { "party", SK_BYTES }, { "box", SK_BYTES }, { "digbmv", SK_U8 },
   // settings, so a restored device plays the way it did
@@ -70,8 +71,8 @@ const SaveField SAVE_FIELDS[] = {
 };
 const uint16_t SAVE_FIELD_COUNT = sizeof(SAVE_FIELDS) / sizeof(SAVE_FIELDS[0]);
 
-// Crash-safe A/B mirrors (bankA/bankB and c0a..c2b) are intentionally not
-// serialized. `party`/`box` and `care0`..`care2` are the portable canonical
+// Crash-safe A/B mirrors (bankA/bankB and c0a..c4b) are intentionally not
+// serialized. `party`/`box` and `care0`..`care4` are the portable canonical
 // mirrors; Party::begin() and CareSlots::begin() rebuild fresh CRC/sequence
 // records after an IMPORT. This keeps backups independent of journal versions.
 
