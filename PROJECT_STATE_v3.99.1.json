@@ -1,0 +1,23 @@
+{
+  "project": "TamaPoke KO",
+  "baseline_fw_version": "3.99.1",
+  "previous_fw_version": "3.99.0",
+  "save_version": 2,
+  "care_slots": 5,
+  "digimon_species": 458,
+  "digimon_ids": "0..457",
+  "digimon_cap": 2048,
+  "features": [
+    "v3.99.0 algorithmic Digimon Shiny palette",
+    "five care slots",
+    "UTF-8 text bounds safety",
+    "UI geometry compile-order fix"
+  ],
+  "invariants": [
+    "append-only Digimon IDs",
+    "no Digimon careMistakes evolution gate",
+    "separate normal evolution and Jogress",
+    "root/source firmware mirrors identical",
+    "workflow/copy mirrors identical"
+  ]
+}

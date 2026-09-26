@@ -1,0 +1,55 @@
+TamaPoke v3.99.1 Compile-Order / Stability Verification
+Date: 2026-09-26
+Base: v3.99.0
+
+ROOT CAUSE
+- v3.98.1 added uiRoundTextWidth()/uiDrawCenteredFit() near the top of TamaPoke.ino.
+- Those helpers referenced CY/CX before the later #define CY 233 / #define CX 233 lines.
+- Arduino/G++ therefore failed in GitHub Actions with: 'CX was not declared in this scope'.
+
+FIX
+- CX and CY are now declared immediately after FW_VERSION, before every UI text helper.
+- The later duplicate definitions were removed.
+- Both TamaPoke.ino and firmware_source/TamaPoke.ino contain the same fix.
+- verify_ui_geometry_declaration_order_v3991.py was added to GitHub Actions before the real Arduino compile step.
+
+LOCAL VALIDATION
+- UI geometry declaration-order verifier: PASS
+- Focused C++17 syntax smoke test of uiRoundTextWidth/uiDrawCenteredFit: PASS (-Wall -Wextra -Werror)
+- Core regression batch: 20/20 PASS
+  * save compatibility
+  * backup field coverage
+  * battle Korean-name regression
+  * five care slots
+  * text bounds / UTF-8 ellipsis
+  * Digimon algorithmic Shiny
+  * runtime stability
+  * roster battle picker
+  * card evolution
+  * Jogress choice
+  * unified Digimon system
+  * fixed Digimon branches
+  * no care-mistake evolution gate
+  * DMUL routes
+  * training rewards
+  * vitality training
+  * casual energy
+  * SD/WebSerial protocol
+  * runtime stabilization
+  * UI geometry declaration order
+- All tools/verify_*.py Python syntax: PASS
+- TamaPoke.ino == firmware_source/TamaPoke.ino: PASS
+- .github/workflows/main.yml == GITHUB_WORKFLOW_COPY.txt: PASS
+
+COMPATIBILITY
+- FW_VERSION: 3.99.1
+- SAVE_VERSION: 2 unchanged
+- Care slots: 5 unchanged
+- Digimon: 458 species, IDs 0..457 unchanged
+- v3.99.0 Shiny behavior unchanged
+- Evolution, battle balance and save layout unchanged
+
+IMPORTANT LIMITATION
+- This environment does not have the complete Arduino ESP32-S3 toolchain/libraries installed, so a full arduino-cli firmware build was not run locally.
+- The exact declaration-order failure shown by GitHub Actions is fixed and covered by a new pre-compile verifier.
+- Final confirmation is the GitHub Actions 'Compile current TamaPoke firmware' stage after uploading v3.99.1.

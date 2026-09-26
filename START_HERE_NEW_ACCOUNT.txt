@@ -1,23 +1,21 @@
 TamaPoke KO 개발 계속하기 시작점
 
-현재 기준 버전: v3.99.0
-이전 기준 버전: v3.98.1
+현재 기준 버전: v3.99.1
+이전 기준 버전: v3.99.0
 세이브 포맷: SAVE_VERSION 2
 키우기 슬롯: 5개
 디지몬: 458종 (ID 0~457), CAP 2048
 
 먼저 읽을 파일:
-1. TamaPoke-v3.99.0-HANDOFF.md
-2. BUILD_FIX_v3.99.0_KO.md
-3. TamaPoke-v3.99.0-Verification.txt
+1. TamaPoke-v3.99.1-HANDOFF.md
+2. BUILD_FIX_v3.99.1_KO.md
+3. TamaPoke-v3.99.1-Verification.txt
 
-v3.99.0 핵심 변경:
-- 디지몬 Shiny 지원
-- 별도 스프라이트 없이 DGI RGB565 런타임 팔레트 변환
-- 일반 디지타마 Shiny 확률과 반짝부적/좋은 이별 보정 지원
-- 샤이니열매로 현재 디지몬 Shiny 변환 지원
-- 진화/Jogress/파티/박스/배틀/5개 육성 슬롯에서 Shiny 상태 유지
-- 디지몬 Shiny 도감 기록(digshy) 추가 및 백업/복원 지원
+v3.99.1 핵심 변경:
+- GitHub Actions ESP32-S3 실제 컴파일 오류 수정
+- uiRoundTextWidth/uiDrawCenteredFit보다 뒤에 있던 CX/CY 선언을 공통 UI 헬퍼보다 앞으로 이동
+- CX/CY 선언 순서 회귀검증 추가
+- v3.99.0 디지몬 Shiny, v3.98.1 텍스트 경계, v3.98.0 5개 육성 슬롯 기능 유지
 
 현재 핵심 원칙:
 - 과거 버전으로 롤백하지 않기
@@ -30,4 +28,4 @@ v3.99.0 핵심 변경:
 - 키우기 슬롯 5개 유지
 - TamaPoke.ino == firmware_source/TamaPoke.ino 유지
 - workflow == GITHUB_WORKFLOW_COPY.txt 유지
-- 변경 후 관련 verify_*.py를 반드시 실행
+- 변경 후 관련 verify_*.py 및 실제 GitHub Arduino compile을 확인

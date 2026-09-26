@@ -14,7 +14,8 @@ def need(cond,msg):
         print('FAIL:',msg); sys.exit(1)
     print('PASS:',msg)
 
-need('#define FW_VERSION "3.99.0"' in ino,'firmware version is 3.99.0')
+mver=re.search(r'^#define\s+FW_VERSION\s+"(\d+)\.(\d+)\.(\d+)"',ino,re.M)
+need(bool(mver) and tuple(map(int,mver.groups())) >= (3,99,0),'firmware version keeps v3.99.0+ Digimon Shiny feature')
 need('eggShiny = (random(shinyBase) == 0);' in pet,'Digimon eggs share the normal rare-variant roll')
 need('eggIsDigimon() ? false' not in pet and 'shiny = eggIsDigimon() ? false' not in pet,'Digimon shiny suppression removed')
 need('shiny = eggShiny;' in pet,'hatching preserves shiny for Digimon')

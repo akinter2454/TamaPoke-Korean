@@ -1,0 +1,8 @@
+TamaPoke v3.99.1 local regression summary
+- UI geometry compile-order guard: PASS
+- C++ focused helper syntax smoke: PASS
+- Core verifier batch: 20 PASS / 0 FAIL
+- verify_*.py py_compile: PASS
+- firmware mirror: PASS
+- workflow mirror: PASS
+- Full Arduino ESP32-S3 compile: deferred to GitHub Actions
