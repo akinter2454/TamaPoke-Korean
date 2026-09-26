@@ -1,0 +1,22 @@
+{
+  "project": "TamaPoke KO",
+  "baseline_fw_version": "3.99.0",
+  "previous_fw_version": "3.98.1",
+  "save_version": 2,
+  "care_slots": 5,
+  "digimon_species": 458,
+  "digimon_ids": "0..457",
+  "digimon_cap": 2048,
+  "features": [
+    "algorithmic Digimon Shiny palette",
+    "Digimon egg shiny roll",
+    "Shiny Berry supports Digimon",
+    "Digimon shiny dex registry"
+  ],
+  "invariants": [
+    "append-only Digimon IDs",
+    "no Digimon careMistakes evolution gate",
+    "separate normal evolution and Jogress",
+    "root/source firmware mirrors identical"
+  ]
+}

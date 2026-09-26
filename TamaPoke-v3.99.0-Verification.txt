@@ -1,0 +1,37 @@
+TamaPoke v3.99.0 Digimon Shiny Verification
+
+Result: PASS for locally runnable targeted/static regression checks.
+
+Core regression suite: 30 PASS / 0 FAIL
+Covered:
+- Digimon shiny v3.99.0 feature guard
+- save compatibility + backup key coverage
+- five care slots
+- battle-name regression
+- UTF-8 / round-display text bounds
+- roster battle picker
+- Digimon system / animation / evolution frame 2
+- fixed branches / no-care-mistake / Jogress / DMUL route integrity
+- training rewards / vitality / casual energy
+- runtime stability
+- SD Digimon isolation + serial protocol
+- progress-card readability
+- Digimon name QoL
+- firmware source fallback
+- card evolution / Digimon moves / type variety / fusion policy / reserved species
+
+Additional static checks:
+- Python verifier/tool syntax: PASS
+- Installer inline JavaScript syntax: PASS
+- GitHub Actions YAML parse: PASS
+- TamaPoke.ino == firmware_source/TamaPoke.ino: PASS
+- main.yml == GITHUB_WORKFLOW_COPY.txt: PASS
+- Shiny RGB565 smoke test: black/white preservation + colored/grey transformation PASS
+
+Not run locally:
+- Real ESP32-S3 Arduino compile (arduino-cli toolchain not installed in this environment)
+- Physical Waveshare AMOLED runtime/soak test
+- CI-generated PMD catalog-only checks
+
+GitHub Actions retains the real ESP32-S3 compile stage and now runs both
+verify_text_bounds_v3981.py and verify_digimon_shiny_v3990.py before compiling.

@@ -207,8 +207,13 @@ public:
   uint8_t dexReg[(DEX_COUNT + 7) / 8] = { 0 };       // criados
   uint8_t dexShinyReg[(DEX_COUNT + 7) / 8] = { 0 };  // criados en version shiny
   uint8_t digiReg[(DIGI_SPECIES_CAP + 7) / 8] = {0};
+  // Shiny Digimon use the same individual shiny flag as Pokemon, but keep a
+  // separate player-wide discovery bitset because Digimon IDs live outside
+  // the ordinary Pokedex range. Appended state only; old saves simply load 0s.
+  uint8_t digiShinyReg[(DIGI_SPECIES_CAP + 7) / 8] = {0};
   uint8_t digiBest[DIGI_SPECIES_CAP] = {0};
   bool isDigiRegistered(uint16_t id) const { return id < DIGI_SPECIES_COUNT && (digiReg[id >> 3] & (1 << (id & 7))); }
+  bool isDigiShinyRegistered(uint16_t id) const { return id < DIGI_SPECIES_COUNT && (digiShinyReg[id >> 3] & (1 << (id & 7))); }
   uint16_t digiRegisteredCount() const { uint16_t n=0; for(uint16_t i=0;i<DIGI_SPECIES_COUNT;i++) if(isDigiRegistered(i)) n++; return n; }
   // racha de cuidado diario (del jugador: persiste entre crianzas)
   uint16_t streak = 0, bestStreak = 0;

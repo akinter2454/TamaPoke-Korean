@@ -18,7 +18,7 @@ assert rows[457][0]=='Imperialdramon OmegaX' and ko_names[457]=='황제드라몬
 assert 'return digimonNameKoShort(digimonIndex(id));' in cpp
 assert 'DIGI_SPECIES[id].name:"???"' not in ino
 assert 'DIGI_CREATURE_BASE = 2000' in h and 'isCreatureId' in h and 'DIGI_DEVICE_SLOT_COUNT = 18' in h and 'isDmulVersion' in h
-assert 'setDigimonVersion' in pet and 'eggSource' in pet and 'eggIsDigimon() ? false' in pet
+assert 'setDigimonVersion' in pet and 'eggSource' in pet and 'eggShiny = (random(shinyBase) == 0);' in pet
 assert 'digimonEvolutionTarget' in pet and 'trAtk,trDef,trSpe,trHp' in pet
 assert 'creatureBaseAtk' in party and 'isCreatureId(m.dex)' in party
 assert 'creatureHasArt(pet.speciesId)' in ino

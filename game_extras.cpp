@@ -275,7 +275,7 @@ const char *GameExtras::itemNameKo(uint8_t id) const {
 const char *GameExtras::itemEffectKo(uint8_t id) const {
   static const char *const N[XITEM_COUNT] = {
     "공격 훈련 +8", "방어 훈련 +8", "스피드 훈련 +8", "기력·행복 회복", "다음 알 Shiny 2배", "기력 +70",
-    "공격 개체값 +1", "방어 개체값 +1", "스피드 개체값 +1", "체력 개체값 +1", "모든 개체값 +1", "현재 포켓몬을 Shiny로 변화"
+    "공격 개체값 +1", "방어 개체값 +1", "스피드 개체값 +1", "체력 개체값 +1", "모든 개체값 +1", "현재 포켓몬/디지몬을 Shiny로 변화"
   };
   return id < XITEM_COUNT ? N[id] : "";
 }

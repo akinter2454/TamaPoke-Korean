@@ -1,0 +1,33 @@
+TamaPoke v3.99.0 core regression
+PASS 30 / 30
+
+verify_digimon_shiny_v3990.py
+verify_save_compatibility.py
+verify_backup_fields.py
+verify_care_slots_v3980.py
+verify_battle_name_v3980.py
+verify_text_bounds_v3981.py
+verify_roster_battle_picker.py
+verify_digimon_system.py
+verify_digimon_animation_evolution.py
+verify_digimon_evolution_frame2.py
+verify_digimon_fixed_branches.py
+verify_no_care_mistake_evolution.py
+verify_jogress_choice_v3960.py
+verify_dmul_route_integrity_v3940.py
+verify_training_rewards.py
+verify_vitality_training.py
+verify_casual_energy.py
+verify_runtime_stability.py
+verify_runtime_stabilization_v3962.py
+verify_sd_digimon_isolation.py
+verify_sd_serial_protocol.py
+verify_progress_card_readability_v3971.py
+verify_progress_card_readability_v3972.py
+verify_digimon_name_qol_v3970.py
+verify_firmware_source_fallback_v3953.py
+verify_card_evolution.py
+verify_digimon_moves.py
+verify_digimon_type_variety.py
+verify_digimon_fusion_policy.py
+verify_reserved_species.py

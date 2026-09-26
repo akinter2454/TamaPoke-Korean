@@ -28,7 +28,7 @@ const SaveField SAVE_FIELDS[] = {
   { "reg", SK_U8 },     { "egsrc", SK_U8 },   { "r361", SK_BOOL }, { "eggR", SK_BYTES },
   { "badgX", SK_BYTES },{ "badhX", SK_BYTES },
   { "badh", SK_U16 },   { "dexreg", SK_BYTES }, { "dexsh", SK_BYTES },
-  { "digreg", SK_BYTES }, { "digbest", SK_BYTES },
+  { "digreg", SK_BYTES }, { "digshy", SK_BYTES }, { "digbest", SK_BYTES },
   { "strk", SK_U16 },   { "bstrk", SK_U16 },  { "cday", SK_U32 },
   { "hunt", SK_U32 },
   { "medal", SK_U16 },  { "tmedal", SK_U16 }, { "mstone", SK_U16 },

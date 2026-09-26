@@ -304,7 +304,10 @@ void Pet::newEgg() {
   int shinyBase = (lastEnd == CER_FAREWELL ? 16 : 32) - careBonus();
   if (extras.consumeShinyBoostForEgg()) shinyBase = (shinyBase + 1) / 2;
   if (shinyBase < 3) shinyBase = 3;
-  eggShiny = eggIsDigimon() ? false : (random(shinyBase) == 0);
+  // Digimon now use the same rare-variant roll as Pokemon. The Shiny Charm
+  // still arms exactly one next-egg boost and cannot be rerolled by changing
+  // the selected Digimon device/version.
+  eggShiny = (random(shinyBase) == 0);
   // The debt lands on the creature about to hatch, and is spent doing so --
   // it is a one-day penalty, not a running total that compounds each retire.
   evoPen = retirePending ? EVO_PENALTY_LEVELS : 0;
@@ -600,7 +603,7 @@ void Pet::snapshotForParty() {
 void Pet::saveNow() { save(); }
 
 bool Pet::makeCurrentShiny() {
-  if (isEgg() || ceremony != CER_NONE || shiny || speciesId < 1 || speciesId > DEX_COUNT) return false;
+  if (isEgg() || ceremony != CER_NONE || shiny || !isCreatureId(speciesId)) return false;
   shiny = true;
   registerSpecies(speciesId);
   return true;
@@ -1089,7 +1092,8 @@ void Pet::setDigimonVersion(uint8_t version) {
   eggSource = (uint8_t)(REGION_COUNT + slot);
   if (isEgg()) {
     eggTarget = makeDigimonId(petDigimonEggSpecies(version));
-    eggShiny = false;
+    // Keep the already-rolled rare-variant state when cycling Digimon
+    // versions, otherwise tapping the selector could be abused as a reroll.
     starterPick = false;
   }
   save();
@@ -1098,6 +1102,7 @@ void Pet::setDigimonVersion(uint8_t version) {
 void Pet::registerSpecies(int16_t dex) {
   if (isDigimonId(dex)) {
     uint16_t i=digimonIndex(dex); digiReg[i>>3]|=(1<<(i&7));
+    if (shiny) digiShinyReg[i>>3]|=(1<<(i&7));
     if(level()>digiBest[i]) digiBest[i]=level();
     return;
   }
@@ -1549,7 +1554,7 @@ void Pet::release() {
 
 void Pet::hatch() {
   speciesId = eggTarget;
-  shiny = eggIsDigimon() ? false : eggShiny;
+  shiny = eggShiny;
   // IV del individuo (cada crianza es unica). Se tiran ANTES de resetear el
   // vinculo a proposito: el careBonus que los empuja es el del bicho anterior.
   rollIVs();
@@ -2034,6 +2039,7 @@ void Pet::save() {
   // or serial backups today. loadBlob() is prefix-safe, so old 352-cap saves and
   // future longer saves preserve every species index they have in common.
   prefs.putBytes("digreg", digiReg, (DIGI_SPECIES_COUNT + 7u) / 8u);
+  prefs.putBytes("digshy", digiShinyReg, (DIGI_SPECIES_COUNT + 7u) / 8u);
   prefs.putBytes("digbest", digiBest, DIGI_SPECIES_COUNT);
   prefs.putUShort("strk", streak);
   prefs.putUShort("bstrk", bestStreak);
@@ -2150,6 +2156,7 @@ void Pet::load() {
   lastEnd = prefs.getUChar("lend", CER_NONE);
   loadBlob(prefs, "dexreg", dexReg, sizeof(dexReg));
   loadBlob(prefs, "digreg", digiReg, sizeof(digiReg));
+  loadBlob(prefs, "digshy", digiShinyReg, sizeof(digiShinyReg));
   loadBlob(prefs, "digbest", digiBest, sizeof(digiBest));
   streak = prefs.getUShort("strk", 0);
   bestStreak = prefs.getUShort("bstrk", 0);

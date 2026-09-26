@@ -921,22 +921,23 @@ static uint16_t randomStarterOf(uint8_t ver) {
   return firstStarterOf(ver);
 }
 
-void DigiPet::begin(){ prefs.begin("digipet",false); enabled=prefs.getBool("on",false);egg=prefs.getBool("egg",false);eggTaps=prefs.getUChar("etap",0);version=prefs.getUChar("ver",1);if(!isDigimonDeviceVersion(version))version=1;speciesId=prefs.getUShort("id",firstStarterOf(version));if(speciesId>=DIGI_SPECIES_COUNT)speciesId=firstStarterOf(version);prefs.getBytes("iv",iv,sizeof(iv));prefs.getBytes("tr",training,sizeof(training));size_t rl=prefs.getBytesLength("reg");if(rl) prefs.getBytes("reg",registered,min(rl,sizeof(registered)));size_t bl=prefs.getBytesLength("best");if(bl)prefs.getBytes("best",bestLevel,min(bl,sizeof(bestLevel)));if(prefs.getBytesLength("moves")==sizeof(moves))prefs.getBytes("moves",moves,sizeof(moves));else relearnMoves();levelMinutes=prefs.getUInt("mins",0);lastTick=millis();recordCurrentLevel();}
+void DigiPet::begin(){ prefs.begin("digipet",false); enabled=prefs.getBool("on",false);egg=prefs.getBool("egg",false);shiny=prefs.getBool("shy",false);eggShiny=prefs.getBool("eshy",false);eggTaps=prefs.getUChar("etap",0);version=prefs.getUChar("ver",1);if(!isDigimonDeviceVersion(version))version=1;speciesId=prefs.getUShort("id",firstStarterOf(version));if(speciesId>=DIGI_SPECIES_COUNT)speciesId=firstStarterOf(version);prefs.getBytes("iv",iv,sizeof(iv));prefs.getBytes("tr",training,sizeof(training));size_t rl=prefs.getBytesLength("reg");if(rl) prefs.getBytes("reg",registered,min(rl,sizeof(registered)));size_t sl=prefs.getBytesLength("sreg");if(sl)prefs.getBytes("sreg",shinyRegistered,min(sl,sizeof(shinyRegistered)));size_t bl=prefs.getBytesLength("best");if(bl)prefs.getBytes("best",bestLevel,min(bl,sizeof(bestLevel)));if(prefs.getBytesLength("moves")==sizeof(moves))prefs.getBytes("moves",moves,sizeof(moves));else relearnMoves();levelMinutes=prefs.getUInt("mins",0);lastTick=millis();recordCurrentLevel();}
 void DigiPet::recordCurrentLevel(){if(enabled&&!egg&&speciesId<DIGI_SPECIES_COUNT){uint8_t lv=level();if(lv>bestLevel[speciesId])bestLevel[speciesId]=lv;}}
 void DigiPet::save(){
  recordCurrentLevel();
- prefs.putBool("on",enabled);prefs.putBool("egg",egg);prefs.putUChar("etap",eggTaps);
+ prefs.putBool("on",enabled);prefs.putBool("egg",egg);prefs.putBool("shy",shiny);prefs.putBool("eshy",eggShiny);prefs.putUChar("etap",eggTaps);
  prefs.putUChar("ver",version);prefs.putUShort("id",speciesId);
  prefs.putBytes("iv",iv,sizeof(iv));prefs.putBytes("tr",training,sizeof(training));
  // Keep the large 2048-species reserve out of NVS until species actually exist.
  // Old shorter blobs load at the front of these zero-initialised arrays.
  prefs.putBytes("reg",registered,(DIGI_SPECIES_COUNT+7u)/8u);
+ prefs.putBytes("sreg",shinyRegistered,(DIGI_SPECIES_COUNT+7u)/8u);
  prefs.putBytes("best",bestLevel,DIGI_SPECIES_COUNT);
  prefs.putBytes("moves",moves,sizeof(moves));prefs.putUInt("mins",levelMinutes);
 }
-void DigiPet::start(uint8_t v){ if(!isDigimonDeviceVersion(v))v=1;version=v;speciesId=randomStarterOf(version);levelMinutes=0;egg=false;eggTaps=0;for(int i=0;i<4;i++){iv[i]=random(32);training[i]=0;}enabled=true;registered[speciesId>>3]|=1<<(speciesId&7);relearnMoves();save(); }
-void DigiPet::startEgg(uint8_t v){if(!isDigimonDeviceVersion(v))v=1;version=v;speciesId=randomStarterOf(version);enabled=true;egg=true;eggTaps=0;levelMinutes=0;for(int i=0;i<4;i++)training[i]=0;save();}
-bool DigiPet::tapEgg(){if(!enabled||!egg)return false;if(++eggTaps<3){save();return false;}egg=false;eggTaps=0;levelMinutes=0;for(int i=0;i<4;i++){iv[i]=random(32);training[i]=0;}relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
+void DigiPet::start(uint8_t v){ if(!isDigimonDeviceVersion(v))v=1;version=v;speciesId=randomStarterOf(version);levelMinutes=0;egg=false;eggTaps=0;shiny=random(32)==0;eggShiny=shiny;for(int i=0;i<4;i++){iv[i]=random(32);training[i]=0;}enabled=true;registered[speciesId>>3]|=1<<(speciesId&7);if(shiny)shinyRegistered[speciesId>>3]|=1<<(speciesId&7);relearnMoves();save(); }
+void DigiPet::startEgg(uint8_t v){if(!isDigimonDeviceVersion(v))v=1;version=v;speciesId=randomStarterOf(version);enabled=true;egg=true;shiny=false;eggShiny=random(32)==0;eggTaps=0;levelMinutes=0;for(int i=0;i<4;i++)training[i]=0;save();}
+bool DigiPet::tapEgg(){if(!enabled||!egg)return false;if(++eggTaps<3){save();return false;}egg=false;eggTaps=0;shiny=eggShiny;levelMinutes=0;for(int i=0;i<4;i++){iv[i]=random(32);training[i]=0;}relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);if(shiny)shinyRegistered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
 void DigiPet::update(uint32_t now){if(!lastTick)lastTick=now;if(egg)return;uint32_t dm=now-lastTick;if(dm>=60000){levelMinutes+=dm/60000;lastTick+=dm/60000*60000;save();}}
 uint8_t DigiPet::level()const{uint32_t n=1+levelMinutes/30;return n>100?100:n;}
 const DigiSpecies&DigiPet::species()const{return DIGI_SPECIES[speciesId<DIGI_SPECIES_COUNT?speciesId:0];}
@@ -976,10 +977,10 @@ uint16_t DigiPet::fusionTarget()const{
  return digimonJogressTarget(speciesId,level(),training[DIGI_ATK],training[DIGI_DEF],training[DIGI_SPE],training[DIGI_HP],bestLevel);
 }
 bool DigiPet::canJogress()const{return fusionTarget()!=DIGI_NO_FUSION;}
-bool DigiPet::jogress(){if(!canJogress())return false;recordCurrentLevel();uint16_t next=fusionTarget();if(next==DIGI_NO_FUSION||next==speciesId)return false;speciesId=next;for(int i=0;i<4;i++)training[i]=0;relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
+bool DigiPet::jogress(){if(!canJogress())return false;recordCurrentLevel();uint16_t next=fusionTarget();if(next==DIGI_NO_FUSION||next==speciesId)return false;speciesId=next;for(int i=0;i<4;i++)training[i]=0;relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);if(shiny)shinyRegistered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
 bool DigiPet::canEvolve()const{if(egg)return false;uint8_t s=species().stage;static const uint8_t need[]={2,5,12,25,45,60};static const uint16_t tr[]={0,0,4,8,12,0};uint32_t sum=training[0]+training[1]+training[2]+training[3];if(level()<need[s]||sum<tr[s])return false;return chooseEvolution()!=speciesId;}
 uint16_t DigiPet::chooseEvolution()const{return digimonEvolutionTarget(speciesId,level(),training[0],training[1],training[2],training[3],bestLevel);}
-bool DigiPet::evolve(){if(!canEvolve())return false;recordCurrentLevel();uint16_t next=chooseEvolution();if(next==speciesId)return false;speciesId=next;for(int i=0;i<4;i++)training[i]=0;relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
+bool DigiPet::evolve(){if(!canEvolve())return false;recordCurrentLevel();uint16_t next=chooseEvolution();if(next==speciesId)return false;speciesId=next;for(int i=0;i<4;i++)training[i]=0;relearnMoves();registered[speciesId>>3]|=1<<(speciesId&7);if(shiny)shinyRegistered[speciesId>>3]|=1<<(speciesId&7);save();return true;}
 uint16_t DigiPet::registeredCount()const{uint16_t n=0;for(uint16_t i=0;i<DIGI_SPECIES_COUNT;i++)if(isRegistered(i))n++;return n;}
 uint16_t DigiPet::displayIndex()const{uint16_t n=0;for(uint16_t i=0;i<speciesId;i++)if(DIGI_SPECIES[i].version==version)n++;return n;}
 

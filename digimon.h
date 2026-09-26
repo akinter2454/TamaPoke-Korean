@@ -117,6 +117,8 @@ public:
 
   bool enabled = false;
   bool egg = false;
+  bool shiny = false;
+  bool eggShiny = false;
   uint8_t eggTaps = 0;
   uint16_t speciesId = 0;
   uint8_t version = 1;
@@ -126,10 +128,12 @@ public:
   uint32_t levelMinutes = 0;
   uint32_t lastTick = 0;
   uint8_t registered[(DIGI_SPECIES_CAP+7)/8] = {0};
+  uint8_t shinyRegistered[(DIGI_SPECIES_CAP+7)/8] = {0};
   // Highest level ever raised for each species. Fusion materials remain
   // qualified after starting another Digital Monster egg.
   uint8_t bestLevel[DIGI_SPECIES_CAP] = {0};
   bool isRegistered(uint16_t id) const { return id<DIGI_SPECIES_COUNT && (registered[id>>3]&(1<<(id&7))); }
+  bool isShinyRegistered(uint16_t id) const { return id<DIGI_SPECIES_COUNT && (shinyRegistered[id>>3]&(1<<(id&7))); }
   uint16_t registeredCount() const;
   uint16_t displayIndex() const;
 private:

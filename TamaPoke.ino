@@ -32,6 +32,7 @@
 #include "noart.h"
 #include <stdarg.h>
 #include <string.h>
+#include <math.h>
 #include "party.h"
 #include "save.h"
 #include "pet.h"
@@ -46,7 +47,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.98.0"
+#define FW_VERSION "3.99.0"
 // Set to 1 only for a connected USB soak test. Serial printf can itself cause
 // a visible hitch, so normal builds keep frame diagnostics completely off.
 #define TAMAPOKE_FRAME_DIAG 0
@@ -187,13 +188,68 @@ static uint8_t uiFitTextSize(const char *s, uint8_t preferred,
   return preferred;
 }
 
+// Last-resort safety for long Korean names and translated strings. Shrinking to
+// size 1 is not enough when a label is genuinely longer than its box, so make
+// a UTF-8-safe ellipsis instead of letting a partial Hangul codepoint or the
+// following text escape the panel.
+static void uiEllipsize(const char *src, char *dst, size_t dstSize,
+                        uint8_t size, int16_t maxWidth) {
+  if (!dst || dstSize == 0) return;
+  dst[0] = 0;
+  if (!src) return;
+  if (uiTextWidth(src, size) <= maxWidth) {
+    snprintf(dst, dstSize, "%s", src);
+    return;
+  }
+  const char *dots = "..";
+  const int dotsW = uiTextWidth(dots, size);
+  size_t out = 0;
+  const uint8_t *p = (const uint8_t *)src;
+  while (*p && out + 4 < dstSize) {
+    size_t cp = 1;
+    if ((*p & 0xE0) == 0xC0) cp = 2;
+    else if ((*p & 0xF0) == 0xE0) cp = 3;
+    else if ((*p & 0xF8) == 0xF0) cp = 4;
+    if (out + cp + 3 >= dstSize) break;
+    memcpy(dst + out, p, cp);
+    out += cp;
+    dst[out] = 0;
+    if (uiTextWidth(dst, size) + dotsW > maxWidth) {
+      out -= cp;
+      dst[out] = 0;
+      break;
+    }
+    p += cp;
+  }
+  strncat(dst, dots, dstSize - strlen(dst) - 1);
+}
+
+// Conservative usable chord of the circular 466x466 panel at this text row.
+// This keeps centered text away from the black bezel near the top/bottom even
+// when a caller supplies a rectangular maxWidth that would technically fit.
+static int16_t uiRoundTextWidth(int16_t y, uint8_t size, int16_t margin = 12) {
+  const int16_t radius = 231;
+  int16_t h = (int16_t)(8 * size);
+  int16_t d0 = abs(y - CY);
+  int16_t d1 = abs((y + h) - CY);
+  int16_t d = d0 > d1 ? d0 : d1;
+  if (d >= radius) return 0;
+  float half = sqrtf((float)radius * radius - (float)d * d);
+  int16_t w = (int16_t)(half * 2.0f) - margin * 2;
+  return w > 0 ? w : 0;
+}
+
 static uint8_t uiDrawCenteredFit(const char *s, int16_t centerX, int16_t y,
                                  int16_t maxWidth, uint8_t preferred,
                                  uint8_t minimum = 1) {
+  int16_t roundWidth = uiRoundTextWidth(y, minimum);
+  if (centerX == CX && roundWidth > 0 && roundWidth < maxWidth) maxWidth = roundWidth;
   uint8_t size = uiFitTextSize(s, preferred, minimum, maxWidth);
+  char fitted[192];
+  uiEllipsize(s, fitted, sizeof(fitted), size, maxWidth);
   uiSetTextSize(size);
-  uiSetCursor(centerX - uiTextHalfWidth(s, size), y);
-  gfx->print(s);
+  uiSetCursor(centerX - uiTextHalfWidth(fitted, size), y);
+  gfx->print(fitted);
   return size;
 }
 
@@ -201,9 +257,11 @@ static uint8_t uiDrawLeftFit(const char *s, int16_t x, int16_t y,
                              int16_t maxWidth, uint8_t preferred,
                              uint8_t minimum = 1) {
   uint8_t size = uiFitTextSize(s, preferred, minimum, maxWidth);
+  char fitted[192];
+  uiEllipsize(s, fitted, sizeof(fitted), size, maxWidth);
   uiSetTextSize(size);
   uiSetCursor(x, y);
-  gfx->print(s);
+  gfx->print(fitted);
   return size;
 }
 
@@ -217,7 +275,7 @@ PmdMon evoPmd;      // forma anterior, solo durante el parpadeo de evolucion
 int16_t monFor = -2;
 bool monShinyFor = false;
 static bool drawDigiFrameCentered(uint16_t spriteId,uint8_t frame,int centerX,
-                                  int groundY,int scale,bool flip,bool silhouette);
+                                  int groundY,int scale,bool flip,bool silhouette,bool shiny=false);
 // v3.90.1: Digimon keep the stable DGI1/2/3 file format, but use the same
 // *movement roles* as the Pokemon PMD actor. The numbers below are DGI frame
 // numbers (0..14), not the 1..15 numbers used by the COLOR reference sheet.
@@ -4047,7 +4105,7 @@ static uint8_t grantTrainingIvBerry(uint8_t primary, bool completed, uint8_t &co
 }
 
 // Separate from the original XITEM_SHINY/반짝부적. This rare berry changes the
-// CURRENT Pokemon and never consumes or replaces the next-egg Shiny boost.
+// CURRENT Pokemon or Digimon and never consumes or replaces the next-egg Shiny boost.
 static bool grantTrainingShinyBerry(bool completed) {
   if (!completed || random(100) >= 30) return false;  // 30% per proper completion
   extras.giveItem(XITEM_SHINY_BERRY, 1);
@@ -4838,7 +4896,7 @@ void renderCardProfile() {
   // Profile/affection always shows a calm idle portrait. Digimon use frame 0
   // instead of inheriting the home-screen walk, joy, eating or discomfort state.
   if (pet.currentIsDigimon()) {
-    if(!drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false))
+    if(!drawDigiFrameCentered(digimonIndex(pet.speciesId),digiMotionFrame(DIGI_MOTION_IDLE,millis()),CX,220,2,false,false,pet.shiny))
       drawDigiMissingGlyph(CX,220,2,false);
   } else if (pmd.loaded)
     drawPmdAct(PMD_IDLE, CX, 206, millis(), true, false, 4);
@@ -5722,9 +5780,7 @@ static void btlSide(int tx, int ty, int sx, int sy, const Combatant &c, uint8_t 
   char l[48];
   snprintf(l, sizeof(l), "%s Lv.%u", btlDisplayName(c), c.level);
   gfx->setTextColor(UI_INK);
-  uiSetTextSize(1);
-  uiSetCursor(tx, ty);
-  gfx->print(l);
+  uiDrawLeftFit(l, tx, ty, 142, 1, 1);
   gfx->setTextColor(UI_BAR_WARN);
   uiSetCursor(tx, ty + 14);
   gfx->print("HP");
@@ -5802,8 +5858,10 @@ static void btlSide(int tx, int ty, int sx, int sy, const Combatant &c, uint8_t 
       for(int py=0;py<48;py++)for(int px=0;px<48;px++){
         int ix=mirror?47-px:px;
         uint16_t col=btlDigiPixels[who][py*48+ix];
-        if(col!=btlDigiTransparent[who])
+        if(col!=btlDigiTransparent[who]){
+          if(c.shiny)col=digiShinyColor565(col,digimonIndex(c.dex));
           canvasFillRectFast(dx+px*scale,dy+py*scale,scale,scale,col);
+        }
       }
       return;
     }
@@ -5844,9 +5902,7 @@ void renderWin() {
   char l[40];
   snprintf(l, sizeof(l), T(S_BTL_BEAT), t.name);
   gfx->setTextColor(UI_INK);
-  uiSetTextSize(2);
-  uiSetCursor(CX - uiTextHalfWidth(l, 2), 96);
-  gfx->print(l);
+  uiDrawCenteredFit(l, CX, 96, 360, 2, 1);
 
   // the badge, large, with the hard-mode halo if that is how it was won
   if (btlTrainer < TRAINER_GYMS) {
@@ -5887,9 +5943,7 @@ void renderWin() {
   }
   snprintf(l, sizeof(l), T(S_BADGES_FMT), pet.badgeCountIn(btlRegion, btlHard));
   gfx->setTextColor(UI_INK);
-  uiSetTextSize(2);
-  uiSetCursor(CX - uiTextHalfWidth(l, 2), 316);
-  gfx->print(l);
+  uiDrawCenteredFit(l, CX, 316, 360, 2, 1);
 
   // what the win was worth beyond the badge
   if (btlTrainGain) {
@@ -5897,9 +5951,7 @@ void renderWin() {
     snprintf(l, sizeof(l), T(S_WIN_TRAIN_FMT),
              T(NAMES[btlTrainWhich % 3]), btlTrainGain);
     gfx->setTextColor(UI_BAR_OK);
-    uiSetTextSize(2);
-    uiSetCursor(CX - uiTextHalfWidth(l, 2), 344);
-    gfx->print(l);
+    uiDrawCenteredFit(l, CX, 344, 350, 2, 1);
   } else if (btlPetIn && btlTrainer >= 0) {
     gfx->setTextColor(UI_TRACK);
     uiSetTextSize(1);
@@ -7716,7 +7768,7 @@ void renderBag() {
       }
     } else {
       // Page 2 keeps the original next-egg Shiny Charm, utility items and the
-      // current-Pokemon Shiny Berry. Page 3 holds ordinary growth items.
+      // current-creature Shiny Berry. Page 3 holds ordinary growth items.
       // Existing item IDs 0..10 never move; the new berry is appended.
       const uint8_t utility[4] = { XITEM_SHINY, XITEM_ENERGY, XITEM_GOLD_CROWN, XITEM_SHINY_BERRY };
       const uint8_t growth[4] = { XITEM_ATK, XITEM_DEF, XITEM_SPE, XITEM_VITAL };
@@ -7862,13 +7914,16 @@ void renderMissions() {
     uint16_t col = claimed ? UI_TRACK : done ? UI_BAR_OK : UI_WHITE;
     gfx->fillRoundRect(68, y, 330, 76, 13, col);
     gfx->drawRoundRect(68, y, 330, 76, 13, UI_INK);
-    gfx->setTextColor(claimed ? UI_WHITE : UI_INK); uiSetTextSize(2);
-    uiSetCursor(86, y + 9); gfx->print(extras.missionNameKo(extras.missionKind(i)));
+    gfx->setTextColor(claimed ? UI_WHITE : UI_INK);
+    uiDrawLeftFit(extras.missionNameKo(extras.missionKind(i)), 86, y + 9, 240, 2, 1);
     char pg[20]; snprintf(pg, sizeof(pg), "%u/%u", extras.missionProgress(i), extras.missionGoal(i));
     uiSetCursor(370 - uiTextWidth(pg, 2), y + 9); gfx->print(pg);
     char rw[72]; extraRewardLabel(rw, sizeof(rw), extras.missionRewardKind(i), extras.missionRewardId(i, pet), 1);
-    uiSetTextSize(1); uiSetCursor(86, y + 43);
-    gfx->print(claimed ? "보상 받음" : "보상: "); if (!claimed) gfx->print(rw);
+    char rewardLine[96];
+    if (claimed) snprintf(rewardLine, sizeof(rewardLine), "보상 받음");
+    else snprintf(rewardLine, sizeof(rewardLine), "보상: %s", rw);
+    gfx->setTextColor(claimed ? UI_WHITE : UI_INK);
+    uiDrawLeftFit(rewardLine, 86, y + 43, 286, 1, 1);
   }
   gfx->setTextColor(UI_TRACK); uiSetTextSize(2);
   uiSetCursor(CX - uiTextHalfWidth("닫기", 2), 402); gfx->print("닫기");
@@ -7892,15 +7947,15 @@ void renderRandomEvent() {
   gfx->drawRoundRect(62, 92, 342, 280, 20, UI_BAR_WARN);
   gfx->setTextColor(UI_BAR_WARN); uiSetTextSize(3);
   const char *title = extras.eventTitleKo();
-  uiSetCursor(CX - uiTextHalfWidth(title, 3), 126); gfx->print(title);
+  uiDrawCenteredFit(title, CX, 126, 300, 3, 1);
   gfx->setTextColor(UI_INK); uiSetTextSize(2);
   const char *msg = extras.eventTextKo();
-  uiSetCursor(CX - uiTextHalfWidth(msg, 2), 184); gfx->print(msg);
+  uiDrawCenteredFit(msg, CX, 184, 310, 2, 1);
   char rw[80]; extraRewardLabel(rw, sizeof(rw), extras.eventRewardKind(), extras.eventRewardId(), extras.eventRewardCount());
   gfx->fillRoundRect(94, 232, 278, 64, 14, UI_BG_DAY);
   gfx->drawRoundRect(94, 232, 278, 64, 14, UI_INK);
   gfx->setTextColor(UI_INK); uiSetTextSize(2);
-  uiSetCursor(CX - uiTextHalfWidth(rw, 2), 254); gfx->print(rw);
+  uiDrawCenteredFit(rw, CX, 254, 250, 2, 1);
   gfx->fillRoundRect(132, 316, 202, 44, 12, UI_BAR_OK);
   gfx->setTextColor(UI_WHITE); uiSetTextSize(2);
   uiSetCursor(CX - uiTextHalfWidth("받기", 2), 329); gfx->print("받기");
@@ -7968,8 +8023,11 @@ static bool combatantFromCareSlot(uint8_t slot, Combatant &c, uint32_t nowEpoch)
   c.base[SI_SPE] = personalityApply(careCalcStat(creatureBaseSpe(m.speciesId), m.ivSpe, lvl, m.trSpe), pers, PST_SPE);
   memcpy(c.moves, m.moves, sizeof(c.moves));
   c.shiny = m.shiny != 0;
-  const char *nm = m.nick[0] ? m.nick : creatureName(m.speciesId);
-  snprintf(c.name, sizeof(c.name), "%s", nm);
+  // Combatant.name is a tiny nickname field. Never copy the localized species
+  // name here: Korean UTF-8 can be cut mid-codepoint. Empty means display the
+  // canonical species name from dex at render time.
+  if (m.nick[0]) snprintf(c.name, sizeof(c.name), "%s", m.nick);
+  else c.name[0] = 0;
   return true;
 }
 
@@ -8138,12 +8196,12 @@ void renderBoss() {
   gfx->fillScreen(RGB565_BLACK); gfx->fillCircle(CX,CY,231,UI_BG_DAY);
   gfx->setTextColor(UI_INK); uiSetTextSize(3); uiSetCursor(CX-uiTextHalfWidth("3마리 타입 보스",3),44); gfx->print("3마리 타입 보스");
   gfx->fillRoundRect(72,96,322,92,18,lerp565(typeColor(t),UI_WHITE,6,8)); gfx->drawRoundRect(72,96,322,92,18,typeColor(t));
-  char bn[48]; snprintf(bn,sizeof(bn),"오늘의 보스: %s",localizedTypeName(t)); gfx->setTextColor(typeColor(t)); uiSetTextSize(3); uiSetCursor(CX-uiTextHalfWidth(bn,3),118); gfx->print(bn);
-  gfx->setTextColor(UI_INK); uiSetTextSize(1); const char* done=extras.bossDefeated(t)?"오늘 타입은 격파 기록 있음":"첫 격파는 타입 기술머신 확정"; uiSetCursor(CX-uiTextHalfWidth(done,1),154); gfx->print(done);
-  char bp[96];snprintf(bp,sizeof(bp),"HP 50%%↓ 2페이즈: %s",bossPhaseEffectKo(t));gfx->setTextColor(UI_BAR_BAD);uiSetCursor(CX-uiTextHalfWidth(bp,1),174);gfx->print(bp);
-  char bw[48];snprintf(bw,sizeof(bw),"현재 날씨: %s",extras.weatherNameKo(extras.weatherId(pet)));gfx->setTextColor(UI_TRACK);uiSetCursor(CX-uiTextHalfWidth(bw,1),192);gfx->print(bw);
+  char bn[48]; snprintf(bn,sizeof(bn),"오늘의 보스: %s",localizedTypeName(t)); gfx->setTextColor(typeColor(t)); uiDrawCenteredFit(bn,CX,118,300,3,1);
+  gfx->setTextColor(UI_INK); const char* done=extras.bossDefeated(t)?"오늘 타입은 격파 기록 있음":"첫 격파는 타입 기술머신 확정"; uiDrawCenteredFit(done,CX,154,300,1,1);
+  char bp[96];snprintf(bp,sizeof(bp),"HP 50%%↓ 2페이즈: %s",bossPhaseEffectKo(t));gfx->setTextColor(UI_BAR_BAD);uiDrawCenteredFit(bp,CX,174,300,1,1);
+  char bw[48];snprintf(bw,sizeof(bw),"현재 날씨: %s",extras.weatherNameKo(extras.weatherId(pet)));gfx->setTextColor(UI_TRACK);uiDrawCenteredFit(bw,CX,192,300,1,1);
   gfx->fillRoundRect(72,214,322,62,12,UI_WHITE);gfx->drawRoundRect(72,214,322,62,12,UI_INK);
-  char pool[64];snprintf(pool,sizeof(pool),"현재·파티·박스에서 선택 가능: %u마리",available);gfx->setTextColor(UI_INK);uiSetTextSize(2);uiSetCursor(CX-uiTextHalfWidth(pool,2),226);gfx->print(pool);
+  char pool[64];snprintf(pool,sizeof(pool),"현재·파티·박스에서 선택 가능: %u마리",available);gfx->setTextColor(UI_INK);uiDrawCenteredFit(pool,CX,226,300,2,1);
   gfx->setTextColor(UI_TRACK);uiSetTextSize(1);uiSetCursor(CX-uiTextHalfWidth("도전을 누른 뒤 출전할 3마리를 고르세요",1),254);gfx->print("도전을 누른 뒤 출전할 3마리를 고르세요");
   gfx->fillRoundRect(104,302,258,62,16,available>=3?UI_BAR_BAD:UI_TRACK);gfx->setTextColor(UI_WHITE);uiSetTextSize(3);const char* go=available>=3?"멤버 선택":"3마리 필요";uiSetCursor(CX-uiTextHalfWidth(go,3),321);gfx->print(go);
   gfx->setTextColor(UI_TRACK);uiSetTextSize(2);uiSetCursor(CX-uiTextHalfWidth("뒤로",2),405);gfx->print("뒤로");gfx->flush();
@@ -8369,11 +8427,11 @@ void renderRival() {
   if (extras.rivalHasSpecial() && !wait) {
     uint8_t sp=extras.rivalSpecial();
     gfx->fillRoundRect(70,188,326,150,18,C565(0xff,0xf5,0xd9));gfx->drawRoundRect(70,188,326,150,18,UI_BAR_WARN);
-    const char *ttl=extras.rivalSpecialTitleKo();gfx->setTextColor(UI_BAR_WARN);uiSetTextSize(3);uiSetCursor(CX-uiTextHalfWidth(ttl,3),202);gfx->print(ttl);
-    const char *tx=extras.rivalSpecialTextKo();gfx->setTextColor(UI_INK);uiSetTextSize(1);uiSetCursor(CX-uiTextHalfWidth(tx,1),246);gfx->print(tx);
+    const char *ttl=extras.rivalSpecialTitleKo();gfx->setTextColor(UI_BAR_WARN);uiDrawCenteredFit(ttl,CX,202,300,3,1);
+    const char *tx=extras.rivalSpecialTextKo();gfx->setTextColor(UI_INK);uiDrawCenteredFit(tx,CX,246,300,1,1);
     if (sp==RIVSPEC_TRADE) {
       char tr[96];snprintf(tr,sizeof(tr),"내 %s TM 1개 → %s TM 1개",localizedTypeName(extras.rivalTradeWantType()),localizedTypeName(extras.rivalTradeGiveType()));
-      gfx->setTextColor(UI_INK);uiSetTextSize(1);uiSetCursor(CX-uiTextHalfWidth(tr,1),270);gfx->print(tr);
+      gfx->setTextColor(UI_INK);uiDrawCenteredFit(tr,CX,270,300,1,1);
       char own[48];snprintf(own,sizeof(own),"보유 %u개",extras.tmCount(extras.rivalTradeWantType()));gfx->setTextColor(UI_TRACK);uiSetCursor(CX-uiTextHalfWidth(own,1),288);gfx->print(own);
     } else if (sp==RIVSPEC_TREASURE_RACE) {
       gfx->setTextColor(UI_BAR_OK);uiSetTextSize(1);uiSetCursor(CX-uiTextHalfWidth("승리하면 지도 조각 +1 추가 보상",1),274);gfx->print("승리하면 지도 조각 +1 추가 보상");
@@ -8392,9 +8450,9 @@ void renderRival() {
     bool can=ready>0 && !wait;
     gfx->fillRoundRect(104,294,258,62,16,can?C565(0x5e,0x76,0xc8):UI_TRACK);gfx->setTextColor(UI_WHITE);uiSetTextSize(3);
     char go[48]; if(wait)snprintf(go,sizeof(go),"약 %u분 후 재대결",wait); else snprintf(go,sizeof(go),"라이벌 도전");
-    uiSetCursor(CX-uiTextHalfWidth(go,3),313);gfx->print(go);
+    uiDrawCenteredFit(go,CX,313,230,3,1);
     gfx->setTextColor(UI_TRACK);uiSetTextSize(1);const char *tip=ready>=3?"육성 슬롯 3마리가 모두 출전합니다":"현재 준비된 육성 슬롯만 출전합니다";
-    uiSetCursor(CX-uiTextHalfWidth(tip,1),368);gfx->print(tip);
+    uiDrawCenteredFit(tip,CX,368,300,1,1);
   }
   gfx->setTextColor(UI_TRACK);uiSetTextSize(2);uiSetCursor(CX-uiTextHalfWidth("뒤로",2),410);gfx->print("뒤로");gfx->flush();
 }
@@ -8428,6 +8486,35 @@ static int8_t digiLoadedFrame = -1;
 static uint8_t digiFrameCount = 0;
 static bool digiAnimated = false;
 static uint16_t digiTransparent = 0;
+
+// v3.99.0 algorithmic Digimon Shiny palette. DGI packs do not ship alternate
+// art, so rare variants are generated from the existing RGB565 pixels at draw
+// time. Near-black outlines and near-white highlights are preserved; saturated
+// colors rotate between RGB channels, while neutral midtones receive a subtle
+// warm/cool tint so mostly metallic Digimon still look visibly different.
+// The mapping is deterministic per species and requires no extra SD storage.
+static uint16_t digiShinyColor565(uint16_t c,uint16_t spriteId){
+  uint8_t r5=(uint8_t)((c>>11)&31),g6=(uint8_t)((c>>5)&63),b5=(uint8_t)(c&31);
+  uint8_t r6=(uint8_t)((r5<<1)|(r5>>4));
+  uint8_t b6=(uint8_t)((b5<<1)|(b5>>4));
+  uint8_t hi=max(r6,max(g6,b6)),lo=min(r6,min(g6,b6));
+  if(hi<=8||lo>=55)return c; // keep ink/outline and bright white details stable
+  bool alt=((spriteId^(spriteId>>3))&1)!=0;
+  uint8_t nr,ng,nb;
+  if((uint8_t)(hi-lo)<6){
+    // Grey/metal midtones would not change under a pure hue rotation.
+    if(!alt){nr=(uint8_t)min(63,(int)r6+10);ng=(uint8_t)min(63,(int)g6+4);nb=b6>4?(uint8_t)(b6-4):0;}
+    else{nr=r6>4?(uint8_t)(r6-4):0;ng=(uint8_t)min(63,(int)g6+5);nb=(uint8_t)min(63,(int)b6+10);}
+  }else if(!alt){
+    nr=g6;ng=b6;nb=r6;
+  }else{
+    nr=b6;ng=r6;nb=g6;
+  }
+  nr=(uint8_t)min(63,(int)nr+2);
+  ng=(uint8_t)min(63,(int)ng+2);
+  nb=(uint8_t)min(63,(int)nb+2);
+  return (uint16_t)(((uint16_t)(nr>>1)<<11)|((uint16_t)ng<<5)|(uint16_t)(nb>>1));
+}
 static bool loadDigiSprite(uint16_t id,uint8_t wantedFrame) {
   if (digiLoaded == id && digiLoadedFrame == wantedFrame) return true;
   digiLoaded = -1; digiSpriteW = digiSpriteH = 0;
@@ -8463,13 +8550,16 @@ static void drawDigiMissingGlyph(int centerX,int groundY,int scale,bool label){
 }
 
 static bool drawDigiFrameCentered(uint16_t spriteId,uint8_t frame,int centerX,
-                                  int groundY,int scale,bool flip,bool silhouette){
+                                  int groundY,int scale,bool flip,bool silhouette,bool shiny){
   if(!loadDigiSprite(spriteId,frame))return false;
   int sc=scale>0?scale:(digiSpriteW==16?8:2);
   int drawW=digiSpriteW*sc,drawH=digiSpriteH*sc,x=centerX-drawW/2,y=groundY-drawH;
   for(int py=0;py<digiSpriteH;py++)for(int px=0;px<digiSpriteW;px++){
     int sx=flip?digiSpriteW-1-px:px;uint16_t c=digiPixels[py*digiSpriteW+sx];
-    if(c!=digiTransparent)canvasFillRectFast(x+px*sc,y+py*sc,sc,sc,silhouette?UI_WHITE:c);
+    if(c!=digiTransparent){
+      uint16_t out=silhouette?UI_WHITE:(shiny?digiShinyColor565(c,spriteId):c);
+      canvasFillRectFast(x+px*sc,y+py*sc,sc,sc,out);
+    }
   }
   return true;
 }
@@ -8614,6 +8704,7 @@ static void drawDigiSprite() {
   }
 
   uint16_t spriteId=pet.currentIsDigimon()?digimonIndex(pet.speciesId):digiPet.speciesId;
+  bool spriteShiny=pet.currentIsDigimon()?pet.shiny:digiPet.shiny;
   if(!loadDigiSprite(spriteId,frame)){
     gfx->fillRoundRect(153,116,160,142,18,UI_TRACK);
     drawDigiMissingGlyph(CX,208,2,false);
@@ -8636,7 +8727,10 @@ static void drawDigiSprite() {
   for(int py=0;py<digiSpriteH;py++)for(int px=0;px<digiSpriteW;px++){
     int sx=flip?digiSpriteW-1-px:px;
     uint16_t c=digiPixels[py*digiSpriteW+sx];
-    if(c!=digiTransparent)canvasFillRectFast(drawX+px*sc,drawY+py*sc,sc,sc,c);
+    if(c!=digiTransparent){
+      if(spriteShiny)c=digiShinyColor565(c,spriteId);
+      canvasFillRectFast(drawX+px*sc,drawY+py*sc,sc,sc,c);
+    }
   }
 
   if(pet.showHeart())
@@ -8653,7 +8747,7 @@ void renderDigi(){
     gfx->fillRoundRect(118,390,230,44,12,UI_BAR_OK);gfx->drawRoundRect(118,390,230,44,12,UI_INK);uiDrawCenteredFit("디지몬 도감",CX,402,218,2,1);
   }
   else{
-    char title[64];snprintf(title,sizeof(title),"%s  Lv.%u",digimonNameKoShort(digiPet.speciesId),digiPet.level());gfx->setTextColor(typeColor(digiPet.type1()));uiDrawCenteredFit(title,CX,110,420,2,1);drawDigiSprite();
+    char title[64];snprintf(title,sizeof(title),"%s%s  Lv.%u",digiPet.shiny?"*":"",digimonNameKoShort(digiPet.speciesId),digiPet.level());gfx->setTextColor(typeColor(digiPet.type1()));uiDrawCenteredFit(title,CX,110,420,2,1);drawDigiSprite();
     char sub[48];snprintf(sub,sizeof(sub),"%s  %s/%s",digiStageName(digiPet.species().stage),typeName(digiPet.type1()),digiPet.type2()==T_NONE?"-":typeName(digiPet.type2()));gfx->setTextColor(UI_INK);uiDrawCenteredFit(sub,CX,264,430,1,1);
     static const char*const lab[]={"공격","방어","스피드","체력"};
     for(int i=0;i<4;i++){int x=38+i*99;gfx->fillRoundRect(x,292,92,62,10,UI_WHITE);gfx->drawRoundRect(x,292,92,62,10,typeColor(digiPet.type1()));char s[24];snprintf(s,sizeof(s),"%s %u",lab[i],digiPet.stat((DigiTrain)i));uiDrawCenteredFit(s,x+46,302,86,1,1);snprintf(s,sizeof(s),"훈련 %u",digiPet.training[i]);uiDrawCenteredFit(s,x+46,326,86,1,1);}
@@ -8695,7 +8789,11 @@ void renderDigiDex(){
   if(digiDexDetail>=0&&digiDexDetail<DIGI_SPECIES_COUNT){
     uint16_t id=(uint16_t)digiDexDetail;char no[16];digiDexNumber(id,no,sizeof(no));bool seen=pet.isDigiRegistered(id);
     gfx->fillRoundRect(36,72,394,318,18,UI_WHITE);gfx->drawRoundRect(36,72,394,318,18,UI_INK);
-    uiDrawCenteredFit(no,CX,92,350,2,1);uiDrawCenteredFit((seen||isDigiExtraSpecies(id))?digimonNameKoShort(id):"???",CX,132,350,3,2);
+    uiDrawCenteredFit(no,CX,92,350,2,1);
+    char digiName[72];
+    if(seen||isDigiExtraSpecies(id))snprintf(digiName,sizeof(digiName),"%s%s",pet.isDigiShinyRegistered(id)?"*":"",digimonNameKoShort(id));
+    else snprintf(digiName,sizeof(digiName),"???");
+    uiDrawCenteredFit(digiName,CX,132,350,3,2);
     uiDrawCenteredFit(isDigiFusionSpecies(id)?"융합체":(id==DIGI_CHAOSDRAMON?"상위 진화체":digiStageName(DIGI_SPECIES[id].stage)),CX,180,350,2,1);
     gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("진화 조건",CX,228,330,2,1);gfx->setTextColor(UI_INK);uiDrawCenteredFit(digiDexRule(id),CX,264,350,2,1);
     if(isDigiExtraSpecies(id)){char lv[64];snprintf(lv,sizeof(lv),"현재 최고기록 %u",pet.digiBest[id]);uiDrawCenteredFit(lv,CX,324,330,1,1);}
@@ -8706,7 +8804,10 @@ void renderDigiDex(){
     uint16_t id=(uint16_t)digiDexPage*per+row;if(id>=DIGI_SPECIES_COUNT)break;int y=66+row*43;bool seen=pet.isDigiRegistered(id);
     gfx->fillRoundRect(52,y,362,36,8,seen?UI_WHITE:UI_TRACK);gfx->drawRoundRect(52,y,362,36,8,seen?typeColor(digiPet.type1()):UI_INK);
     char no[16];digiDexNumber(id,no,sizeof(no));uiDrawLeftFit(no,64,y+10,76,1,1);
-    uiDrawLeftFit((seen||isDigiExtraSpecies(id))?digimonNameKoShort(id):"???",145,y+8,158,2,1);uiDrawLeftFit(seen?(isDigiFusionSpecies(id)?"융합체":digiStageName(DIGI_SPECIES[id].stage)):"미등록",310,y+10,94,1,1);
+    char digiRowName[72];
+    if(seen||isDigiExtraSpecies(id))snprintf(digiRowName,sizeof(digiRowName),"%s%s",pet.isDigiShinyRegistered(id)?"*":"",digimonNameKoShort(id));
+    else snprintf(digiRowName,sizeof(digiRowName),"???");
+    uiDrawLeftFit(digiRowName,145,y+8,158,2,1);uiDrawLeftFit(seen?(isDigiFusionSpecies(id)?"융합체":digiStageName(DIGI_SPECIES[id].stage)):"미등록",310,y+10,94,1,1);
   }
   char page[32];snprintf(page,sizeof(page),"%u/%u  좌우 넘김",digiDexPage+1,pages);uiDrawCenteredFit(page,CX,418,260,1,1);uiDrawCenteredFit("닫기",CX,443,100,2,1);gfx->flush();
 }
@@ -9495,7 +9596,7 @@ static void drawDigiCeremony(){
       flip=false;
       silhouette=t>0.6f&&((now/160)%2==0);
     }
-    if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,silhouette))
+    if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,silhouette,pet.shiny))
       drawDigiMissingGlyph(x,PET_GROUND,2,false);
     return;
   }
@@ -9516,7 +9617,7 @@ static void drawDigiCeremony(){
     // Walking right: mirror the left-facing source art.
     flip=true;
   }
-  if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,false))
+  if(!drawDigiFrameCentered(id,frame,x,PET_GROUND,0,flip,false,pet.shiny))
     drawDigiMissingGlyph(x,PET_GROUND,2,false);
   if(pet.showHeart())drawMap(SPR_HEART,32,x+50,PET_GROUND-190,2,false);
 }
@@ -9741,7 +9842,7 @@ void drawEvolveFX(uint32_t now) {
 // the creature sprite itself stays on DGI frame 2 for the whole transformation.
 // This removes the visible 1<->2 wobble while old/new silhouettes alternate.
 static bool drawDigiEvolutionForm(uint16_t spriteId, bool silhouette) {
-  return drawDigiFrameCentered(spriteId,2,CX,PET_GROUND,0,false,silhouette);
+  return drawDigiFrameCentered(spriteId,2,CX,PET_GROUND,0,false,silhouette,pet.shiny);
 }
 
 static void drawDigiEvolveFX(uint32_t now) {
@@ -9786,7 +9887,7 @@ void drawPet() {
         // Existing Evolution completion motion: Pose 1<->2 on the new form.
         if(!drawDigiFrameCentered(digimonIndex(pet.speciesId),
                                   digiMotionFrame(DIGI_MOTION_POSE,now),
-                                  CX,PET_GROUND,0,false,false))
+                                  CX,PET_GROUND,0,false,false,pet.shiny))
           drawDigiMissingGlyph(CX,PET_GROUND,2,false);
       } else {
         drawDigiSprite();
