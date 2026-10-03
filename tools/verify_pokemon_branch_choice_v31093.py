@@ -12,7 +12,8 @@ err=[]
 def need(cond,msg):
     if not cond: err.append(msg)
 
-need('#define FW_VERSION "3.109.3"' in ino,'firmware version is not 3.109.3')
+mver=re.search(r'^#define\s+FW_VERSION\s+"(\d+)\.(\d+)\.(\d+)"',ino,re.M)
+need(bool(mver) and tuple(map(int,mver.groups())) >= (3,109,3),'firmware version is older than 3.109.3')
 need(ino==fallback,'root and fallback sketches differ')
 need('uint8_t eligibleEvolutionOptions(int16_t *out, uint8_t cap) const;' in pet_h,'eligibleEvolutionOptions declaration missing')
 need('bool evolveTo(int16_t target);' in pet_h,'evolveTo declaration missing')

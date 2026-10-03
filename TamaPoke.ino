@@ -53,7 +53,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.109.3"
+#define FW_VERSION "3.109.4"
 // Round 466x466 panel center. These geometry constants must be declared before
 // the text fitting helpers below; GitHub Actions compiles in strict C++ order.
 #define CX 233
@@ -11183,10 +11183,20 @@ static void drawJogressPreviewPanel() {
 }
 
 static void openNormalEvolutionDialog() {
-  evoPickCount = pet.eligibleEvolutionOptions(evoPickOpts, MAX_EVO_OPTIONS);
+  // Digimon normal evolution has its own deterministic route resolver.
+  // v3.109.3's Pokemon branch picker called eligibleEvolutionOptions(), which
+  // intentionally returns 0 for Digimon, so a ready Digimon could show the
+  // evolution CTA but tapping it opened no confirmation dialog. Keep Digimon
+  // on the established Pet::evolve() path and reserve the picker for Pokemon.
+  evoPickCount = 0;
   evoPickPage = 0;
   evoPickTarget = -1;
   evoPickConfirm = false;
+  if (pet.currentIsDigimon()) {
+    choiceKind = pet.canEvolveNow() ? 1 : 0;
+    return;
+  }
+  evoPickCount = pet.eligibleEvolutionOptions(evoPickOpts, MAX_EVO_OPTIONS);
   choiceKind = evoPickCount > 1 ? 5 : (evoPickCount == 1 ? 1 : 0);
 }
 
