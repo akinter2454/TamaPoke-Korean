@@ -37,8 +37,9 @@ stats = function_body(SOURCE, 'void renderCardStats() {')
 card = function_body(SOURCE, 'void renderCard() {')
 render = function_body(SOURCE, 'void render() {')
 
-# Card stats must expose both choices when applicable.
-for token in ('pet.wantEvolveButton()', 'pet.canJogressNow()', 'CARD_EVO_X', 'CARD_EVO_Y', '"일반 진화"', '"조그레스"'):
+# Card stats must expose both choices when applicable. Normal evolution uses
+# canEvolveNow() directly so a declined Lv.100 evolution is never permanently hidden.
+for token in ('pet.canEvolveNow()', 'pet.canJogressNow()', 'CARD_EVO_X', 'CARD_EVO_Y', '"일반 진화"', '"조그레스"'):
     if token not in stats:
         raise SystemExit(f'card stats evolution control missing: {token}')
 

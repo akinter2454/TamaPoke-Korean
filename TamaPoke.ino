@@ -46,13 +46,14 @@
 #include "game_extras.h"
 #include "personality.h"
 #include "ui_sprites.h"
+#include "digi_thumbnail.h"
 #include "habitat_assets.h"
 #include "habitat_time_assets.h"
 #include "training_art.h"
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.109.0"
+#define FW_VERSION "3.109.2"
 // Round 466x466 panel center. These geometry constants must be declared before
 // the text fitting helpers below; GitHub Actions compiles in strict C++ order.
 #define CX 233
@@ -2901,7 +2902,7 @@ void onTap(int16_t x, int16_t y) {
     }
     if (cardPage == 0 && y < 84) openKeyboard();  // tocar el nombre = renombrar
     else if (cardPage == 1 && y >= CARD_EVO_Y && y <= CARD_EVO_Y + CARD_EVO_H) {
-      bool normal=pet.wantEvolveButton();
+      bool normal=pet.canEvolveNow();
       bool jog=pet.canJogressNow();
       if(normal&&jog){
         if(x>=42&&x<=224) choiceKind=1;
@@ -5416,7 +5417,7 @@ void renderCardStats() {
   drawCardStat(224, T(S_STAT_VIT), pet.vitStat(), 360, UI_BAR_OK, pet.ivHp);
   drawCardStat(264, T(S_STAT_WGT), pet.weight, 100, 0xB3C8, IV_NONE);
 
-  bool normalReady=pet.wantEvolveButton();
+  bool normalReady=pet.canEvolveNow();
   bool jogressReady=pet.canJogressNow();
   if(normalReady && jogressReady){
     gfx->fillRoundRect(42,CARD_EVO_Y,182,CARD_EVO_H,12,UI_BAR_BAD);
@@ -5433,10 +5434,7 @@ void renderCardStats() {
     gfx->fillRoundRect(CARD_EVO_X,CARD_EVO_Y,CARD_EVO_W,CARD_EVO_H,12,UI_BAR_OK);
     gfx->drawRoundRect(CARD_EVO_X,CARD_EVO_Y,CARD_EVO_W,CARD_EVO_H,12,UI_INK);
     gfx->setTextColor(UI_WHITE);uiDrawCenteredFit("조그레스",CX,CARD_EVO_Y+12,CARD_EVO_W-24,3,2);
-  }else if(pet.canEvolveNow()){
-    gfx->setTextColor(UI_TRACK);uiDrawCenteredFit("다음 레벨에서 다시 선택할 수 있어요",CX,CARD_EVO_Y+14,CARD_EVO_W,2,1);
   }
-
 }
 
 // Draws one move as a row: name, its type in the type's own colour, and either
@@ -9742,6 +9740,35 @@ static bool drawDigiFrameCentered(uint16_t spriteId,uint8_t frame,int centerX,
   }
   return true;
 }
+// Six visible box/party slots: 12 KiB pixel cache, no allocation and no
+// repeated SD reads on a stable page. Missing art retries once per five seconds.
+struct DigiThumbCacheEntry {
+  uint16_t id = 0;
+  uint32_t retryAt = 0;
+  bool ready = false;
+  bool attempted = false;
+  uint16_t pixels[32*32];
+};
+static DigiThumbCacheEntry digiThumbCache[6];
+static void drawDigiListIcon(uint16_t dex, bool shiny, uint8_t slot, int x, int y) {
+  if(slot>=6 || !isDigimonId(dex))return;
+  uint16_t id=digimonIndex(dex);
+  DigiThumbCacheEntry &entry=digiThumbCache[slot];
+  uint32_t now=millis();
+  if(!entry.attempted || entry.id!=id || (!entry.ready && (int32_t)(now-entry.retryAt)>=0)) {
+    entry.attempted=true;entry.id=id;entry.ready=false;entry.retryAt=now+5000UL;
+    if(loadDigiSprite(id,0))
+      entry.ready=makeDigiThumbnail(digiPixels,digiSpriteW,digiSpriteH,digiTransparent,entry.pixels);
+  }
+  if(!entry.ready){drawDigiMissingGlyph(x+16,y+32,1,false);return;}
+  for(int py=0;py<32;++py)for(int px=0;px<32;){
+    uint16_t c=entry.pixels[py*32+px];int run=1;
+    while(px+run<32 && entry.pixels[py*32+px+run]==c)++run;
+    if(c!=0x0001)canvasFillRectFast(x+px,y+py,run,1,shiny?digiShinyColor565(c,id):c);
+    px+=run;
+  }
+}
+
 static bool loadBattleDigi(uint8_t who,uint16_t id,uint8_t wantedFrame){
   if(who>1)return false;
   if(btlDigiFor[who]==id&&btlDigiFrame[who]==(int8_t)wantedFrame)return true;
@@ -10273,8 +10300,9 @@ void renderBox() {
                         y + PARTY_CELL_H / 2 - 8, PARTY_CELL_W - 16, 2, 1);
       continue;
     }
-    const uint8_t *th = thumbs.get(m.dex);
-    if (th) drawThumb(th, x - 14, y - 4, 2, false);
+    if (isDigimonId(m.dex)) drawDigiListIcon(m.dex,m.shiny,i,x+10,y+19);
+    else { const uint8_t *th = thumbs.get(m.dex);
+      if (th) drawThumb(th, x - 14, y - 4, 2, false); }
     gfx->setTextColor(UI_INK);
     const char *boxName = m.nick[0] ? m.nick : creatureName(m.dex);
     uiDrawLeftFit(boxName, x + 52, y + 10, PARTY_CELL_W - 60, 2, 1);
@@ -10383,8 +10411,9 @@ void drawPartySlot(int i, int x, int y) {
     gfx->print(T(S_PARTY_EMPTY));
     return;
   }
-  const uint8_t *th = thumbs.get(m.dex);
-  if (th) drawThumb(th, x - 6, y - 3, 1, false);
+  if (isDigimonId(m.dex)) drawDigiListIcon(m.dex,m.shiny,(uint8_t)i,x+14,y+19);
+  else { const uint8_t *th = thumbs.get(m.dex);
+    if (th) drawThumb(th, x - 6, y - 3, 1, false); }
   const char *nm = m.nick[0] ? m.nick : creatureName(m.dex);
   gfx->setTextColor(RGB565_BLACK);
   uiSetTextSize(1);
