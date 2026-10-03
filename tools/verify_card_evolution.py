@@ -45,7 +45,8 @@ for token in ('pet.canEvolveNow()', 'pet.canJogressNow()', 'CARD_EVO_X', 'CARD_E
 
 # Touch routing: accept any harmless whitespace around assignments/comparisons.
 require(touch, r'cardPage\s*==\s*1', 'card evolution touch path missing: cardPage == 1')
-require(touch, r'choiceKind\s*=\s*1\s*;', 'card evolution touch path missing: normal evolution choice')
+if not (re.search(r'choiceKind\s*=\s*1\s*;', touch, re.S) or 'openNormalEvolutionDialog()' in touch):
+    raise SystemExit('card evolution touch path missing: normal evolution choice')
 require(touch, r'choiceKind\s*=\s*4\s*;', 'card evolution touch path missing: Jogress choice')
 
 for token in ('pet.evolve()', 'pet.jogress()', 'pet.declineEvolve()'):

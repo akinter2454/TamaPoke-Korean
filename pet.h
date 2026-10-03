@@ -445,7 +445,11 @@ public:
     return 1.0f - (float)left / (float)EVOLVE_ANIM_MS;
   }
   bool canEvolveNow() const;  // normal evolution only; Jogress is a separate player choice
-  void evolve();              // normal evolution
+  // Returns only Pokemon branches that can be chosen at the creature's current
+  // level. This keeps branch selection UI and evolveTo() on the same rules.
+  uint8_t eligibleEvolutionOptions(int16_t *out, uint8_t cap) const;
+  bool evolveTo(int16_t target); // explicit Pokemon branch selected by the player
+  void evolve();              // normal evolution (legacy/search/random fallback)
   uint16_t jogressTarget() const;
   bool canJogressNow() const;
   bool jogress();              // explicit Jogress/fusion chosen by the player

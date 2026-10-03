@@ -815,6 +815,10 @@ uint8_t Pet::evolutionOptions(int16_t base, int16_t *out, uint8_t cap) const {
   addUnique(DEX_TBL[base].evolvesTo);
   for (uint8_t i = 0; i < ALOLA_BRANCH_COUNT; i++)
     if (ALOLA_BRANCH_BASES[i] == base) addUnique(ALOLA_BRANCH_EVOS[i]);
+  for (uint8_t i = 0; i < CORE_BRANCH_COUNT; i++)
+    if (CORE_BRANCH_BASES[i] == base) addUnique(CORE_BRANCH_EVOS[i]);
+  for (uint8_t i = 0; i < CORE_LATE_BRANCH_COUNT; i++)
+    if (CORE_LATE_BRANCH_BASES[i] == base) addUnique(CORE_LATE_BRANCH_EVOS[i]);
   for (uint16_t i = 0; i < EXTRA_BRANCH_COUNT; i++)
     if (EXTRA_BRANCH_BASES[i] == base) addUnique(EXTRA_BRANCH_EVOS[i]);
   return n;
@@ -875,6 +879,8 @@ bool dexHasEvolution(int16_t d) {
     for (uint8_t i=0;i<EEVEE_EVO_COUNT;i++) if (speciesHasArt(EEVEE_EVOS[i])) return true;
   }
   for (uint8_t i=0;i<ALOLA_BRANCH_COUNT;i++) if (ALOLA_BRANCH_BASES[i]==d && speciesHasArt(ALOLA_BRANCH_EVOS[i])) return true;
+  for (uint8_t i=0;i<CORE_BRANCH_COUNT;i++) if (CORE_BRANCH_BASES[i]==d && speciesHasArt(CORE_BRANCH_EVOS[i])) return true;
+  for (uint8_t i=0;i<CORE_LATE_BRANCH_COUNT;i++) if (CORE_LATE_BRANCH_BASES[i]==d && speciesHasArt(CORE_LATE_BRANCH_EVOS[i])) return true;
   for (uint16_t i=0;i<EXTRA_BRANCH_COUNT;i++) if (EXTRA_BRANCH_BASES[i]==d && speciesHasArt(EXTRA_BRANCH_EVOS[i])) return true;
   return false;
 }
@@ -901,6 +907,10 @@ uint8_t dexEvolutionLevel(int16_t d) {
   for (uint8_t i=0;i<ALOLA_BRANCH_COUNT;i++)
     if (ALOLA_BRANCH_BASES[i] == d && speciesHasArt(ALOLA_BRANCH_EVOS[i]))
       take(DEX_TBL[d].evolveLevel);
+  for (uint8_t i=0;i<CORE_BRANCH_COUNT;i++)
+    if (CORE_BRANCH_BASES[i] == d && speciesHasArt(CORE_BRANCH_EVOS[i])) take(CORE_BRANCH_LEVELS[i]);
+  for (uint8_t i=0;i<CORE_LATE_BRANCH_COUNT;i++)
+    if (CORE_LATE_BRANCH_BASES[i] == d && speciesHasArt(CORE_LATE_BRANCH_EVOS[i])) take(CORE_LATE_BRANCH_LEVELS[i]);
   for (uint16_t i=0;i<EXTRA_BRANCH_COUNT;i++) {
     if (EXTRA_BRANCH_BASES[i] != d) continue;
     int16_t target = EXTRA_BRANCH_EVOS[i];
@@ -938,6 +948,10 @@ static uint8_t evolutionTargetLevel(int16_t base, int16_t target) {
   }
   for (uint8_t i=0;i<ALOLA_BRANCH_COUNT;i++)
     if (ALOLA_BRANCH_BASES[i] == base && ALOLA_BRANCH_EVOS[i] == target) take(DEX_TBL[base].evolveLevel);
+  for (uint8_t i=0;i<CORE_BRANCH_COUNT;i++)
+    if (CORE_BRANCH_BASES[i] == base && CORE_BRANCH_EVOS[i] == target) take(CORE_BRANCH_LEVELS[i]);
+  for (uint8_t i=0;i<CORE_LATE_BRANCH_COUNT;i++)
+    if (CORE_LATE_BRANCH_BASES[i] == base && CORE_LATE_BRANCH_EVOS[i] == target) take(CORE_LATE_BRANCH_LEVELS[i]);
   for (uint16_t i=0;i<EXTRA_BRANCH_COUNT;i++)
     if (EXTRA_BRANCH_BASES[i] == base && EXTRA_BRANCH_EVOS[i] == target) take(EXTRA_BRANCH_LEVELS[i]);
   if (!need) need = dexEvolutionLevel(base);
@@ -1662,6 +1676,41 @@ bool Pet::jogress() {
   return true;
 }
 
+uint8_t Pet::eligibleEvolutionOptions(int16_t *out, uint8_t cap) const {
+  if (!out || cap == 0 || currentIsDigimon() || !canEvolveNow()) return 0;
+  int16_t tmp[MAX_EVO_OPTIONS];
+  uint8_t n = evolutionOptions(speciesId, tmp, MAX_EVO_OPTIONS);
+  uint8_t eligible = 0;
+  const uint8_t lv = level();
+  for (uint8_t i = 0; i < n && eligible < cap; i++) {
+    uint8_t need = effectiveEvolutionTargetLevel(speciesId, tmp[i], careMistakes, evoPen);
+    if (need && lv >= need) out[eligible++] = tmp[i];
+  }
+  return eligible;
+}
+
+bool Pet::evolveTo(int16_t target) {
+  if (!canEvolveNow() || currentIsDigimon()) return false;
+  int16_t opts[MAX_EVO_OPTIONS];
+  uint8_t n = eligibleEvolutionOptions(opts, MAX_EVO_OPTIONS);
+  bool found = false;
+  for (uint8_t i = 0; i < n; i++) {
+    if (opts[i] == target) { found = true; break; }
+  }
+  if (!found) return false;
+
+  prevSpeciesId = speciesId;
+  speciesId = target;
+  evoDeclinedLv = 0;
+  registerSpecies(speciesId);
+  checkLearnGates();
+  evolveKind = 1;
+  sfxPlay(SFX_EVOLVE);
+  evolveUntil = millis() + EVOLVE_ANIM_MS;
+  save();
+  return true;
+}
+
 void Pet::evolve() {
   if (!canEvolveNow()) return;
   if (currentIsDigimon()) {
@@ -1672,49 +1721,27 @@ void Pet::evolve() {
     digimonDefaultMoves(next,level(),ivAtk,ivDef,ivSpe,ivHp,moves);
     evolveKind=1; sfxPlay(SFX_EVOLVE); evolveUntil=millis()+EVOLVE_ANIM_MS; save(); return;
   }
-  const DexEntry &d = DEX_TBL[speciesId];
-  prevSpeciesId = speciesId;
-  int16_t next = d.evolvesTo;
-  {
-    const uint8_t cap = MAX_EVO_OPTIONS;
-    int16_t opts[MAX_EVO_OPTIONS];
-    uint8_t n = evolutionOptions(speciesId, opts, cap);
-    // Respect each branch's own level.  This is especially important for the
-    // permanent Lv.70 Mega evolutions added in v3.62.0.
-    uint8_t eligible = 0;
-    uint8_t lv = level();
-    for (uint8_t i = 0; i < n; i++) {
-      uint8_t need = effectiveEvolutionTargetLevel(speciesId, opts[i], careMistakes, evoPen);
-      if (need && lv >= need) opts[eligible++] = opts[i];
+  int16_t opts[MAX_EVO_OPTIONS];
+  uint8_t n = eligibleEvolutionOptions(opts, MAX_EVO_OPTIONS);
+  if (n == 0) return;
+  int16_t next = opts[0];
+  if (n > 1) {
+    // Legacy/non-UI callers keep the collection-friendly fallback. The normal
+    // touch UI now calls evolveTo() after the player chooses a branch.
+    bool huntedBranch = false;
+    if (huntTarget >= 1) {
+      for (uint8_t i = 0; i < n; i++) {
+        if (opts[i] == huntTarget) { next = huntTarget; huntedBranch = true; break; }
+      }
     }
-    n = eligible;
-    if (n == 0) return;
-    if (n == 1) next = opts[0];
-    if (n > 1) {
-      // Same collection-friendly rule as Eevee: Search target first, then an
-      // unregistered branch, then random after both/all forms are collected.
-      bool huntedBranch = false;
-      if (huntTarget >= 1) {
-        for (uint8_t i = 0; i < n; i++) {
-          if (opts[i] == huntTarget) { next = huntTarget; huntedBranch = true; break; }
-        }
-      }
-      if (!huntedBranch) {
-        int16_t fresh[MAX_EVO_OPTIONS];
-        uint8_t m = 0;
-        for (uint8_t i = 0; i < n; i++) if (!isRegistered(opts[i])) fresh[m++] = opts[i];
-        next = m ? fresh[random(m)] : opts[random(n)];
-      }
+    if (!huntedBranch) {
+      int16_t fresh[MAX_EVO_OPTIONS];
+      uint8_t m = 0;
+      for (uint8_t i = 0; i < n; i++) if (!isRegistered(opts[i])) fresh[m++] = opts[i];
+      next = m ? fresh[random(m)] : opts[random(n)];
     }
   }
-  speciesId = next;
-  evoDeclinedLv = 0;
-  registerSpecies(speciesId);
-  checkLearnGates();   // the new form may gate a move at this very level
-  evolveKind=1;
-  sfxPlay(SFX_EVOLVE);
-  evolveUntil = millis() + EVOLVE_ANIM_MS;
-  save();
+  (void)evolveTo(next);
 }
 
 void Pet::feed() {

@@ -36,6 +36,27 @@ static const int16_t EEVEE_EVOS[EEVEE_EVO_COUNT] = { 134, 135, 136, 196, 197, 47
 static const int16_t ALOLA_BRANCH_BASES[ALOLA_BRANCH_COUNT] = { 25, 102, 104 };
 static const int16_t ALOLA_BRANCH_EVOS[ALOLA_BRANCH_COUNT] = { DEX_A_RAICHU, DEX_A_EXEGGUTOR, DEX_A_MAROWAK };
 
+// v3.109.3: split-evolution branches that must also exist in an offline/local
+// build before GitHub Actions refreshes the full PokeAPI evolution graph.
+// Direct DEX_TBL targets remain the first branch; these rows add only the
+// missing alternatives. The runtime de-duplicates them against EXTRA_BRANCH_*.
+#define CORE_BRANCH_COUNT 11
+static const int16_t CORE_BRANCH_BASES[CORE_BRANCH_COUNT] = {
+  44, 61, 79, 236, 236, 265, 281, 290, 361, 366, 412
+};
+static const int16_t CORE_BRANCH_EVOS[CORE_BRANCH_COUNT] = {
+  182, 186, 199, 107, 237, 268, 475, 292, 478, 368, 414
+};
+static const uint8_t CORE_BRANCH_LEVELS[CORE_BRANCH_COUNT] = {
+  30, 30, 30, 20, 20, 7, 30, 20, 30, 30, 20
+};
+
+// Cosmoem's version-exclusive split is level-based rather than item-based.
+#define CORE_LATE_BRANCH_COUNT 1
+static const int16_t CORE_LATE_BRANCH_BASES[CORE_LATE_BRANCH_COUNT] = { 790 };
+static const int16_t CORE_LATE_BRANCH_EVOS[CORE_LATE_BRANCH_COUNT] = { 792 };
+static const uint8_t CORE_LATE_BRANCH_LEVELS[CORE_LATE_BRANCH_COUNT] = { 53 };
+
 // The 18 current types. See tools/dex_types.py for why this game uses the
 // modern chart rather than the Gen 1 one.
 enum PkType : uint8_t {

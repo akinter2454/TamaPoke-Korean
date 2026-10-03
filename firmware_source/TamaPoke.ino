@@ -53,7 +53,7 @@
 
 // Version del firmware. Subir este numero en cada release (y manifest.json para
 // el instalador web). Se muestra en la pantalla de ajustes y por serie al arrancar.
-#define FW_VERSION "3.109.2"
+#define FW_VERSION "3.109.3"
 // Round 466x466 panel center. These geometry constants must be declared before
 // the text fitting helpers below; GitHub Actions compiles in strict C++ order.
 #define CX 233
@@ -451,6 +451,9 @@ static void uiGameButton(int x, int y, int w, int h, const char *label,
                          uint16_t accent, bool enabled, uint8_t textSize);
 static void uiGameBackHint(const char *label);
 static void drawEvolutionResultCard();
+static void drawEvolutionPickerPanel();
+static void openNormalEvolutionDialog();
+static bool evolutionPickerTap(int16_t x, int16_t y);
 
 TouchDrvCST92xx touch;
 Pet pet;
@@ -1287,7 +1290,14 @@ uint8_t dimStage = 0;        // 0 awake, 1 dimmed (90s); 5min enters true screen
 bool swallowGesture = false; // el toque que despierta no acciona nada
 uint32_t holdStart = 0;     // pulsacion larga sobre el bicho
 uint32_t confirmUntil = 0;  // dialogo "soltar?" activo hasta este millis
-uint8_t choiceKind = 0;     // 0 none, 1 normal evolution, 2 farewell, 3 retire, 4 Jogress
+uint8_t choiceKind = 0;     // 0 none, 1 normal evolution, 2 farewell, 3 retire, 4 Jogress, 5 Pokemon branch picker
+// Pokemon split-evolution picker. Transient only: no save-layout change. Four
+// candidates per page keeps Eevee's eight branches readable on the 466px circle.
+static int16_t evoPickOpts[MAX_EVO_OPTIONS];
+static uint8_t evoPickCount = 0;
+static uint8_t evoPickPage = 0;
+static int16_t evoPickTarget = -1;
+static bool evoPickConfirm = false;
 uint32_t choiceUntil = 0;   // se cierra solo a este millis
 int16_t tX0, tY0, tXl, tYl; // gesto en curso (inicio y ultima posicion)
 uint32_t tStart = 0;
@@ -2878,7 +2888,11 @@ void onTap(int16_t x, int16_t y) {
   }
   if (pet.ceremony) return;  // durante la despedida no hay botones
   if (cardOpen) {
-    if (choiceKind == 1 || choiceKind == 4) {
+    if (choiceKind == 5) {
+      evolutionPickerTap(x, y);
+      return;
+    }
+    if (choiceKind == 1 || choiceKind == 4 || choiceKind == 5) {
       int c1t, c1b, c2t, c2b;
       uiConfirmRects(&c1t, &c1b, &c2t, &c2b);
       const bool inX = x >= CONFIRM_BTN_X && x <= CONFIRM_BTN_X + CONFIRM_BTN_W;
@@ -2905,12 +2919,12 @@ void onTap(int16_t x, int16_t y) {
       bool normal=pet.canEvolveNow();
       bool jog=pet.canJogressNow();
       if(normal&&jog){
-        if(x>=42&&x<=224) choiceKind=1;
+        if(x>=42&&x<=224) openNormalEvolutionDialog();
         else if(x>=242&&x<=424) choiceKind=4;
         else choiceKind=0;
-      }else if(normal && x>=CARD_EVO_X && x<=CARD_EVO_X+CARD_EVO_W) choiceKind=1;
+      }else if(normal && x>=CARD_EVO_X && x<=CARD_EVO_X+CARD_EVO_W) openNormalEvolutionDialog();
       else if(jog && x>=CARD_EVO_X && x<=CARD_EVO_X+CARD_EVO_W) choiceKind=4;
-      if(choiceKind){choiceUntil=millis()+12000;sfxPlay(SFX_TAP);}
+      if(choiceKind){choiceUntil=millis()+(choiceKind==5?30000UL:12000UL);sfxPlay(SFX_TAP);}
     }
     else if (cardPage == 2) {
       for (int i = 0; i < MOVE_SLOTS; i++) {   // tap a slot to change it
@@ -2948,6 +2962,10 @@ void onTap(int16_t x, int16_t y) {
     return;
   }
   if (choiceKind) {          // dialogo de decision: boton accion (arriba) / mantener (abajo)
+    if (choiceKind == 5) {
+      evolutionPickerTap(x, y);
+      return;
+    }
     int c1t, c1b, c2t, c2b;
     uiConfirmRects(&c1t, &c1b, &c2t, &c2b);
     const bool inX = (x >= CONFIRM_BTN_X && x <= CONFIRM_BTN_X + CONFIRM_BTN_W);
@@ -8494,7 +8512,7 @@ void renderCard() {
   else if (cardPage == 2) renderCardMoves();
   else renderCardProgress();
 
-  if (choiceKind == 1 || choiceKind == 4) {
+  if (choiceKind == 1 || choiceKind == 4 || choiceKind == 5) {
     if (millis() > choiceUntil) choiceKind = 0;
     else {
       drawChoiceDialog();
@@ -11140,7 +11158,129 @@ static void drawJogressPreviewPanel() {
   uiDrawCenteredFit("취소", CX, CONFIRM_B2_Y + 18, 240, 2, 1);
 }
 
+static void openNormalEvolutionDialog() {
+  evoPickCount = pet.eligibleEvolutionOptions(evoPickOpts, MAX_EVO_OPTIONS);
+  evoPickPage = 0;
+  evoPickTarget = -1;
+  evoPickConfirm = false;
+  choiceKind = evoPickCount > 1 ? 5 : (evoPickCount == 1 ? 1 : 0);
+}
+
+static void drawEvolutionPickerPanel() {
+  if (evoPickCount == 0) { choiceKind = 0; return; }
+  if (evoPickConfirm && evoPickTarget >= 1) {
+    char q[96];
+    snprintf(q, sizeof(q), "%s로 진화할까요?", creatureName(evoPickTarget));
+    drawConfirmPanel(q, nullptr, nullptr, UI_INK,
+                     "진화", UI_BAR_BAD, UI_WHITE,
+                     "뒤로", UI_TRACK, UI_INK);
+    return;
+  }
+
+  gfx->fillRoundRect(48, 42, 370, 374, 20, UI_WHITE);
+  gfx->drawRoundRect(48, 42, 370, 374, 20, UI_INK);
+  gfx->setTextColor(UI_INK);
+  uiSetTextSize(2);
+  uiDrawCenteredFit("진화 선택", CX, 56, 250, 2, 1);
+
+  const uint8_t perPage = 4;
+  const uint8_t pages = (uint8_t)((evoPickCount + perPage - 1) / perPage);
+  if (evoPickPage >= pages) evoPickPage = pages - 1;
+  const uint8_t start = evoPickPage * perPage;
+  for (uint8_t row = 0; row < perPage; row++) {
+    uint8_t idx = start + row;
+    if (idx >= evoPickCount) break;
+    const int y = 84 + row * 68;
+    const int16_t target = evoPickOpts[idx];
+    gfx->fillRoundRect(68, y, 330, 64, 12, C565(0xf3,0xf5,0xf7));
+    gfx->drawRoundRect(68, y, 330, 64, 12, UI_INK);
+    const uint8_t *th = thumbs.get(target);
+    if (th) drawThumb(th, 82, y, 2, false);
+    else {
+      gfx->fillCircle(114, y + 30, 22, UI_TRACK);
+      gfx->setTextColor(UI_WHITE); uiDrawCenteredFit("?", 114, y + 20, 30, 2, 1);
+    }
+    gfx->setTextColor(UI_INK);
+    uiSetTextSize(2);
+    uiDrawCenteredFit(creatureName(target), 262, y + 20, 230, 2, 1);
+    uiSetTextSize(1);
+    gfx->setTextColor(pet.isRegistered(target) ? UI_BAR_OK : UI_TRACK);
+    uiDrawCenteredFit(pet.isRegistered(target) ? "도감 등록" : "미등록", 262, y + 44, 150, 1, 1);
+  }
+
+  gfx->setTextColor(UI_INK);
+  uiSetTextSize(2);
+  if (pages > 1) {
+    if (evoPickPage > 0) uiDrawCenteredFit("<", 100, 371, 60, 3, 2);
+    char pg[24]; snprintf(pg, sizeof(pg), "%u / %u", (unsigned)evoPickPage + 1, (unsigned)pages);
+    uiDrawCenteredFit(pg, CX, 378, 100, 1, 1);
+    if (evoPickPage + 1 < pages) uiDrawCenteredFit(">", 366, 371, 60, 3, 2);
+  }
+  gfx->setTextColor(UI_TRACK);
+  uiDrawCenteredFit("취소", CX, 400, 120, 2, 1);
+}
+
+static bool evolutionPickerTap(int16_t x, int16_t y) {
+  if (choiceKind != 5) return false;
+  choiceUntil = millis() + 30000UL;
+  if (evoPickConfirm) {
+    int c1t, c1b, c2t, c2b;
+    uiConfirmRects(&c1t, &c1b, &c2t, &c2b);
+    const bool inX = x >= CONFIRM_BTN_X && x <= CONFIRM_BTN_X + CONFIRM_BTN_W;
+    if (inX && y >= c1t && y <= c1b) {
+      int16_t old = pet.speciesId;
+      if (pet.evolveTo(evoPickTarget)) {
+        evoPmd.load(old, pet.shiny);
+        cardOpen = false;
+      }
+      choiceKind = 0;
+      evoPickConfirm = false;
+      sfxPlay(SFX_TAP);
+      return true;
+    }
+    if (inX && y >= c2t && y <= c2b) {
+      evoPickConfirm = false;
+      evoPickTarget = -1;
+      sfxPlay(SFX_TAP);
+      return true;
+    }
+    return true;
+  }
+
+  const uint8_t perPage = 4;
+  const uint8_t pages = (uint8_t)((evoPickCount + perPage - 1) / perPage);
+  const uint8_t start = evoPickPage * perPage;
+  if (x >= 68 && x <= 398) {
+    for (uint8_t row = 0; row < perPage; row++) {
+      const int yy = 84 + row * 68;
+      uint8_t idx = start + row;
+      if (idx < evoPickCount && y >= yy && y <= yy + 64) {
+        evoPickTarget = evoPickOpts[idx];
+        evoPickConfirm = true;
+        sfxPlay(SFX_TAP);
+        return true;
+      }
+    }
+  }
+  if (pages > 1 && y >= 356 && y <= 398) {
+    if (x <= 160 && evoPickPage > 0) { evoPickPage--; sfxPlay(SFX_TAP); return true; }
+    if (x >= 306 && evoPickPage + 1 < pages) { evoPickPage++; sfxPlay(SFX_TAP); return true; }
+  }
+  if (y >= 390 && x >= 160 && x <= 306) {
+    choiceKind = 0;
+    evoPickTarget = -1;
+    evoPickConfirm = false;
+    sfxPlay(SFX_TAP);
+    return true;
+  }
+  return true;
+}
+
 void drawChoiceDialog() {
+  if (choiceKind == 5) {
+    drawEvolutionPickerPanel();
+    return;
+  }
   if (choiceKind == 4) {
     drawJogressPreviewPanel();
     return;
