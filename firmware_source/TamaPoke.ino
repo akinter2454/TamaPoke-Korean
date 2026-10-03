@@ -4288,10 +4288,13 @@ void render() {
     uint16_t eggAura = pet.eggRarity() == R_LEGENDARIO ? C565(0xf1,0xd4,0x6b) :
                        pet.eggRarity() >= R_RARO ? C565(0xc9,0xb6,0xee) :
                        C565(0xf2,0xe7,0xc9);
+    // The egg used to float 18 px above the same ground line used by the
+    // creature sprites. Lower it so its shell visually rests on PET_GROUND.
+    const int eggCy = PET_CY + 18;
     if (pet.eggRarity() >= R_RARO) {
-      gfx->fillCircle(CX, PET_CY, 96, lerp565(eggAura, gNight ? UI_BG_NIGHT : UI_BG_DAY, 11, 16));
+      gfx->fillCircle(CX, eggCy, 96, lerp565(eggAura, gNight ? UI_BG_NIGHT : UI_BG_DAY, 11, 16));
     }
-    drawUiSprite4bpp(eggSpr, CX - 84 + wobble, PET_CY - 84, 7);
+    drawUiSprite4bpp(eggSpr, CX - 84 + wobble, eggCy - 84, 7);
     if (pet.eggRarity() >= R_RARO) {
       const char *rar = (pet.eggRarity() == R_LEGENDARIO) ? T(S_EGG_LEGEND) : T(S_EGG_RARE);
       gfx->setTextColor(pet.eggRarity() == R_LEGENDARIO ? UI_BAR_WARN : 0x4C98);
@@ -7963,16 +7966,37 @@ void renderGyms() {
 #define EGGREG_PAD 16
 #define EGGREG_GUARD 14
 
+// Short labels are used only in the compact egg/source UI.  Keep the full
+// device names in digimonDeviceLabel() for data/debug screens, but abbreviate
+// the long English Pendulum names here so they never escape the round display.
+static const char *digimonDeviceUiLabel(uint8_t v) {
+  static const char*const pendShort[]={
+    "P0 Virus B.", "P1 Nature S.", "P2 Deep S.",
+    "P3 Nightmare", "P4 Wind G.", "P5 Metal E."
+  };
+  if(v>=10&&v<=15)return pendShort[v-10];
+  if(v>=1&&v<=5){
+    static const char*const dmcShort[]={"DMC V1","DMC V2","DMC V3","DMC V4","DMC V5"};
+    return dmcShort[v-1];
+  }
+  if(v==16)return "DMUL Dragon";
+  if(v==17)return "DMUL Dark";
+  if(v==18)return "DMUL Deep";
+  if(v==19)return "DMUL Nature";
+  if(v==20)return "DMUL Night";
+  if(v==21)return "DMUL Secret";
+  if(v==22)return "DMUL Imper.";
+  return digimonDeviceLabel(v);
+}
+
 static void drawEggRegion() {
   char l[32];
-  if(pet.eggSource>=REGION_COUNT){uint8_t slot=pet.eggSource-REGION_COUNT,ver=digimonVersionFromSlot(slot);snprintf(l,sizeof(l),"%s >",digimonDeviceLabel(ver));}
+  if(pet.eggSource>=REGION_COUNT){uint8_t slot=pet.eggSource-REGION_COUNT,ver=digimonVersionFromSlot(slot);snprintf(l,sizeof(l),"%s >",digimonDeviceUiLabel(ver));}
   else snprintf(l, sizeof(l), "%s >", localizedRegionName(pet.region));
   gfx->fillRoundRect(EGGREG_X, EGGREG_Y, EGGREG_W, EGGREG_H, 10, UI_WHITE);
   gfx->drawRoundRect(EGGREG_X, EGGREG_Y, EGGREG_W, EGGREG_H, 10, UI_INK);
   gfx->setTextColor(UI_INK);
-  uiSetTextSize(2);
-  uiSetCursor(EGGREG_X + (EGGREG_W - uiTextWidth(l, 2)) / 2, EGGREG_Y + 9);
-  gfx->print(l);
+  uiDrawCenteredFit(l, CX, EGGREG_Y + 9, EGGREG_W - 20, 2, 1);
   gfx->setTextColor(UI_TRACK);
   uiSetTextSize(1);
   uiSetCursor(CX - uiTextHalfWidth(T(S_EGG_REGION), 1), EGGREG_Y + EGGREG_H + 6);
@@ -8101,12 +8125,12 @@ static void renderRegionPick(uint8_t mode) {
     bool open = digiChoice || forGyms || regionAvailable(i);
     gfx->fillRoundRect(RPICK_X, y, RPICK_W, RPICK_H, 12, open ? UI_WHITE : UI_BG_DAY);
     gfx->drawRoundRect(RPICK_X, y, RPICK_W, RPICK_H, 12, open ? UI_INK : UI_TRACK);
-    char digiNm[32]; if(digiChoice){uint8_t slot=i-GAL_REGIONS,ver=digimonVersionFromSlot(slot);snprintf(digiNm,sizeof(digiNm),"%s",digimonDeviceLabel(ver));}
+    char digiNm[32]; if(digiChoice){uint8_t slot=i-GAL_REGIONS,ver=digimonVersionFromSlot(slot);snprintf(digiNm,sizeof(digiNm),"%s",digimonDeviceUiLabel(ver));}
     const char *nm = digiChoice ? digiNm : localizedRegionName(forGyms ? gymRegionDexRegion(i) : i);
     gfx->setTextColor(open ? UI_INK : UI_TRACK);
-    uiSetTextSize(3);
-    uiSetCursor(RPICK_X + 18, y + 12);
-    gfx->print(nm);
+    // Fit every row to the card instead of assuming a size-3 English label
+    // will fit. This also protects future translated region/device names.
+    uiDrawLeftFit(nm, RPICK_X + 18, y + 12, RPICK_W - 36, 3, 1);
     // At first boot there is no subtitle: naming the starter here would give
     // away the next screen, and the counts the other two modes show would all
     // read zero on a new save anyway.
