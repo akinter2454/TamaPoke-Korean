@@ -1704,7 +1704,7 @@ bool Pet::evolveTo(int16_t target) {
   evoDeclinedLv = 0;
   registerSpecies(speciesId);
   checkLearnGates();
-  evolveKind = 1;
+  evolveKind=1;
   sfxPlay(SFX_EVOLVE);
   evolveUntil = millis() + EVOLVE_ANIM_MS;
   save();
